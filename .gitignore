@@ -1,0 +1,5 @@
+build/
+.tmp/
+
+// random node files
+.node*
