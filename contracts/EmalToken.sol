@@ -1,5 +1,7 @@
 pragma solidity ^ 0.4 .24;
 
+import "zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import './StandardToken.sol';
 
 contract EmalToken is StandardToken {
@@ -12,6 +14,7 @@ contract EmalToken is StandardToken {
 
     /* uint256 public constant TOTAL_SUPPLY = 10000000 * 1 ether; */
 
+    uint256 public constant totalSupply_;
     uint256 private constant TOKEN_UNIT = 10 ** uint256(decimals);
     uint256 public constant publicAmount = 100000000 * TOKEN_UNIT; // Tokens for public
 

@@ -1,14 +1,12 @@
 pragma solidity ^ 0.4 .24;
 
-import './SafeMath.sol';
+import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import './EmalWhitelist.sol';
-import './EmalToken.sol';
 
 // for mist wallet compatibility
 contract EmalToken {
     // add function prototypes of only those used here
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
-
     function setStartTime(uint _startTime) external;
 }
 
@@ -49,7 +47,7 @@ contract EmalCrowdsale is EmalWhitelist {
      * 10^18 wei = 460 EmalTokens
      * 1 EmalTokens = 2,164,502,164,502,164 wei
      */
-    uint256 public overridenRateValue;
+    uint256 public overridenRateValue = 0;
 
     // Amount of tokens that were sold to ether investors plus tokens allocated to investors by server for fiat and btc investments.
     uint256 public totalTokensSoldandAllocated;
@@ -118,14 +116,12 @@ contract EmalCrowdsale is EmalWhitelist {
      * @param _endTime Unix timestamp for the end of the token sale
      * @param _wallet Ethereum address to which the invested funds are forwarded
      * @param _token Address of the token that will be rewarded for the investors
-     * @param _owner Address of the owner of the smart contract who can execute restricted functions
      */
     constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token) public {
         require(_startTime >= now);
         require(_endTime >= _startTime);
         require(_wallet != address(0));
         require(_token != address(0));
-        require(_owner != address(0));
 
         startTime = _startTime;
         endTime = _endTime;
@@ -148,7 +144,7 @@ contract EmalCrowdsale is EmalWhitelist {
     }
 
     modifier hasCrowdsaleEnded() {
-      require(!(now >= startTime && now <= endTime) && (withinPeriod && hardCapNotReached));
+      require(!(now >= startTime && now <= endTime) && (totalTokensSoldandAllocated < hardCap));
       _;
     }
 
@@ -215,7 +211,7 @@ contract EmalCrowdsale is EmalWhitelist {
     }
 
 
-    function _postValidationUpdateTokenContract(){
+    function _postValidationUpdateTokenContract() internal {
       /** @dev If hard cap is reachde allow token transfers
         * @dev Allow users to transfer tokens only after hardCap is reached
         * @dev Notiy token contract about startTime to start transfers
@@ -238,39 +234,47 @@ contract EmalCrowdsale is EmalWhitelist {
      * @dev Adds an investor to whitelist
      * @param _addr The address to user to be added to the whitelist, signifies that the user completed KYC requirements.
      */
-    function addWhitelistInvstor(address _addr) onlyOwner public returns(bool success) {
+    function addWhitelistInvestor(address _addr) onlyOwner public returns(bool success) {
         addToWhitelist(_addr);
         return true;
-    }_addr
+    }
 
     /**
      * @dev Removes an investor's address from whitelist
      * @param _addr The address to user to be added to the whitelist, signifies that the user completed KYC requirements.
      */
-    function removeWhitelistInvstor(address _addr) onlyOwner public returns(bool success) {
+    function removeWhitelistInvestor(address _addr) onlyOwner public returns(bool success) {
         removeFromWhitelist(_addr);
         return true;
     }
 
+    function setRate(uint256 _value) onlyOwner public {
+        overridenRateValue = _value;
+    }
 
     /**
      * @dev Internal function that is used to determine the current rate for token / ETH conversion
+     * @dev there exists a case where rate cant be set to 0, which is fine.
      * @return The current token rate
      */
     function getRate() internal constant returns(uint256) {
-        if (now < (startTime + 1 weeks)) {
-            return 6000;
-        }
+        if ( overridenRateValue!=0 ) {
+            return overridenRateValue;
 
-        if (now < (startTime + 2 weeks)) {
-            return 5500;
-        }
+        } else {
+            if (now < (startTime + 1 weeks)) {
+                return 6000;
+            }
 
-        if (now < (startTime + 3 weeks)) {
-            return 5250;
-        }
+            if (now < (startTime + 2 weeks)) {
+                return 5500;
+            }
 
-        return 5000;
+            if (now < (startTime + 3 weeks)) {
+                return 5250;
+            }
+            return 5000;
+        }
     }
 
     /**
@@ -412,9 +416,10 @@ contract EmalCrowdsale is EmalWhitelist {
         uint256 tokensToSend = allocatedTokens[beneficiary];
 
         allocatedTokens[beneficiary] = 0;
-        allocatedTokensSent[beneficiary] = allocatedTokensSent[beneficiary].add(tokensToSend);
+        amountOfAllocatedTokensIssued[beneficiary] = amountOfAllocatedTokensIssued[beneficiary].add(tokensToSend);
 
-        emalToken.transfer(beneficiary, tokensToSend);
+        // assert implies it should never fail
+        assert(token.transferFrom(owner, beneficiary, tokensToSend));
 
         emit IssuedAllocatedTokens(beneficiary, tokensToSend);
         return true;
@@ -422,7 +427,7 @@ contract EmalCrowdsale is EmalWhitelist {
 
     /* @dev Set the target token */
     function setToken(EmalToken token_addr) onlyOwner public returns (bool success){
-        emalToken = token_addr;
+        token = token_addr;
         return true;
     }
 }
