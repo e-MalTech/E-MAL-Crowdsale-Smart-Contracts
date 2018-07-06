@@ -6,7 +6,7 @@ Sails API communicating with the contracts: contains documentation and setup rea
 Update all contracts to latest solidity version ^0.4.24 and fix compatibility issues.
 ```
 
-TOKEN SMART CONTRACTS
+###TOKEN SMART CONTRACTS
 
 REFERENCE URLs:
 ```
@@ -31,7 +31,7 @@ Allow ownership transfer of token contract.
 
 
 
-EMAL WHITELIST CONTRACT
+###EMAL WHITELIST CONTRACT
 
 REFERENCE URLs:
 ```
@@ -44,7 +44,7 @@ Added access roles so that only admin can add and remove from Emal’s whitelist
 Added a modifier onlyIfWhitelisted for easier access in function definition.
 ```
 
-EMAL CROWDSALE CONTRACT
+###EMAL CROWDSALE CONTRACT
 
 REFERENCE URLs:
 ```
