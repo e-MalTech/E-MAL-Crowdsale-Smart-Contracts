@@ -402,6 +402,24 @@ contract EmalCrowdsale is EmalWhitelist {
     function getAllocatedTokens(address beneficiary) public view returns(uint256 tokenCount) {
         return allocatedTokens[beneficiary];
     }
+    
+    
+    /* Public function that KYC beneficiaries can use to claim the tokens allocated to them */
+    function claimAllocatedTokens() hasCrowdsaleEnded public returns(bool success) {
+        /* investments of the investor or bounty alocated okens for bounty users, should be greater than 0 */
+        require(allocatedTokens[msg.sender] > 0);
+
+        uint256 tokensToSend = allocatedTokens[msg.sender];
+
+        allocatedTokens[msg.sender] = 0;
+        amountOfAllocatedTokensIssued[msg.sender] = amountOfAllocatedTokensIssued[msg.sender].add(tokensToSend);
+
+        // assert implies it should never fail
+        assert(token.transferFrom(owner, mag.sender, tokensToSend));
+
+        emit IssuedAllocatedTokens(msg.sender, tokensToSend);
+        return true;
+    }
 
     /**
      * @dev Investors and bounty users will be issured Tokens by the sails api,
