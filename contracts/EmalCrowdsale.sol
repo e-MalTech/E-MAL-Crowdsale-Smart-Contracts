@@ -7,12 +7,13 @@ import './EmalWhitelist.sol';
 contract EmalToken {
     // add function prototypes of only those used here
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
+
     function setStartTimeForTokenTransfers(uint _startTime) external;
 }
 
 
 /**
- * EMAL Crowdsale smart contract for eMal ICO. Is a Finalizable, Timed, capped Crowdsale
+ * EMAL Crowdsale smart contract for eMal ICO. Is a Finalizable, Timed, capped, pausable Crowdsale
  * This will collect funds from investors in ETH directly from the investor post which it will emit an event
  * The event will then be collected by eMal backend servers and based on the amount of ETH sent and ETH rate
  * in terms of DHS, the tokens to be allocated will be calculated by the backend server and then it will call
@@ -108,6 +109,58 @@ contract EmalCrowdsale is EmalWhitelist {
      */
     event Refund(address indexed receiver, uint256 amount);
 
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+    modifier hasCrowdsaleEnded() {
+        require(!(now >= startTime && now <= endTime) && (totalTokensSoldandAllocated < hardCap));
+        _;
+    }
+
+    /* Pausable contract */
+
+    event Pause();
+    event Unpause();
+
+    bool public paused = false;
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is not paused.
+     */
+    modifier whenNotPaused() {
+        require(!paused);
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is paused.
+     */
+    modifier whenPaused() {
+        require(paused);
+        _;
+    }
+
+    /**
+     * @dev called by the owner to pause, triggers stopped state
+     */
+    function pause() onlyOwner whenNotPaused public {
+        paused = true;
+        emit Pause();
+    }
+
+    /**
+     * @dev called by the owner to unpause, returns to normal state
+     */
+    function unpause() onlyOwner whenPaused public {
+        paused = false;
+        emit Unpause();
+    }
+
 
 
 
@@ -136,19 +189,6 @@ contract EmalCrowdsale is EmalWhitelist {
     }
 
     /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(msg.sender == owner);
-        _;
-    }
-
-    modifier hasCrowdsaleEnded() {
-      require(!(now >= startTime && now <= endTime) && (totalTokensSoldandAllocated < hardCap));
-      _;
-    }
-
-    /**
      * @dev Fallback function that can be used to buy tokens. Or in case of the owner, return ether to allow refunds.
      */
     function() external payable {
@@ -168,9 +208,10 @@ contract EmalCrowdsale is EmalWhitelist {
      * @dev Function for buying tokens
      * @param beneficiary The address that should receive bought tokens
      */
-    function buyTokensUsingEther(address beneficiary) onlyIfWhitelisted(beneficiary) public payable {
+    function buyTokensUsingEther(address beneficiary) whenNotPaused public payable {
         require(beneficiary != address(0));
         require(validPurchase());
+        require(isWhitelisted(beneficiary));
 
         uint256 weiAmount = msg.value;
         uint256 returnToSender = 0;
@@ -212,22 +253,22 @@ contract EmalCrowdsale is EmalWhitelist {
 
 
     function _postValidationUpdateTokenContract() internal {
-      /** @dev If hard cap is reachde allow token transfers after two weeks
-        * @dev Allow users to transfer tokens only after hardCap is reached
-        * @dev Notiy token contract about startTime to start transfers
-        */
-      if (totalTokensSoldandAllocated == hardCap) {
-          token.setStartTimeForTokenTransfers(now + 2 weeks);
-      }
+        /** @dev If hard cap is reachde allow token transfers after two weeks
+         * @dev Allow users to transfer tokens only after hardCap is reached
+         * @dev Notiy token contract about startTime to start transfers
+         */
+        if (totalTokensSoldandAllocated == hardCap) {
+            token.setStartTimeForTokenTransfers(now + 2 weeks);
+        }
 
-      /** @dev If its the first token sold or allocated then set s, allow after 2 weeks
-        * @dev Allow users to transfer tokens only after ICO crowdsale ends.
-        * @dev Notify token contract about sale end time
-        */
-      if (!isStartTimeSetForTokenTransfers) {
-          isStartTimeSetForTokenTransfers = true;
-          token.setStartTimeForTokenTransfers(endTime + 2 weeks);
-      }
+        /** @dev If its the first token sold or allocated then set s, allow after 2 weeks
+         * @dev Allow users to transfer tokens only after ICO crowdsale ends.
+         * @dev Notify token contract about sale end time
+         */
+        if (!isStartTimeSetForTokenTransfers) {
+            isStartTimeSetForTokenTransfers = true;
+            token.setStartTimeForTokenTransfers(endTime + 2 weeks);
+        }
     }
 
     /**
@@ -258,7 +299,7 @@ contract EmalCrowdsale is EmalWhitelist {
      * @return The current token rate
      */
     function getRate() internal constant returns(uint256) {
-        if ( overridenRateValue!=0 ) {
+        if (overridenRateValue != 0) {
             return overridenRateValue;
 
         } else {
@@ -347,7 +388,7 @@ contract EmalCrowdsale is EmalWhitelist {
      * @param beneficiary The address of the investor or the bounty user
      * @param tokenCount The number of tokens to be allocated to this address
      */
-    function allocateTokens(address beneficiary, uint256 tokenCount) onlyOwner public returns(bool success) {
+    function allocateTokens(address beneficiary, uint256 tokenCount) onlyOwner whenNotPaused public returns(bool success) {
         require(beneficiary != address(0));
         require(validAllocation(tokenCount));
 
@@ -371,7 +412,7 @@ contract EmalCrowdsale is EmalWhitelist {
         return true;
     }
 
-    function validAllocation( uint256 tokenCount ) internal constant returns(bool) {
+    function validAllocation(uint256 tokenCount) internal constant returns(bool) {
         bool withinPeriod = now >= startTime && now <= endTime;
         bool nonZeroPurchase = tokenCount != 0;
         bool hardCapNotReached = totalTokensSoldandAllocated < hardCap;
@@ -448,7 +489,7 @@ contract EmalCrowdsale is EmalWhitelist {
     }
 
     /* @dev Set the target token */
-    function setToken(EmalToken token_addr) onlyOwner public returns (bool success){
+    function setToken(EmalToken token_addr) onlyOwner public returns(bool success) {
         token = token_addr;
         return true;
     }

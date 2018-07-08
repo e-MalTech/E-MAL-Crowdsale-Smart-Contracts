@@ -93,6 +93,60 @@ contract EmalPresale is EmalWhitelist {
     event IssuedAllocatedTokens(address indexed beneficiary, uint256 tokenCount);
 
     /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+    modifier hasPresaleEnded() {
+      require(!(now >= startTime && now <= endTime) && (totalTokensSoldandAllocated < hardCap));
+      _;
+    }
+
+    /* Pausable contract */
+
+    event Pause();
+    event Unpause();
+
+    bool public paused = false;
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is not paused.
+     */
+    modifier whenNotPaused() {
+        require(!paused);
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is paused.
+     */
+    modifier whenPaused() {
+        require(paused);
+        _;
+    }
+
+    /**
+     * @dev called by the owner to pause, triggers stopped state
+     */
+    function pause() onlyOwner whenNotPaused public {
+        paused = true;
+        emit Pause();
+    }
+
+    /**
+     * @dev called by the owner to unpause, returns to normal state
+     */
+    function unpause() onlyOwner whenPaused public {
+        paused = false;
+        emit Unpause();
+    }
+
+
+
+    /**
      * @param _startTime Unix timestamp for the start of the token sale
      * @param _endTime Unix timestamp for the end of the token sale
      * @param _wallet Ethereum address to which the invested funds are forwarded
@@ -117,19 +171,6 @@ contract EmalPresale is EmalWhitelist {
     }
 
     /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(msg.sender == owner);
-        _;
-    }
-
-    modifier hasPresaleEnded() {
-      require(!(now >= startTime && now <= endTime) && (totalTokensSoldandAllocated < hardCap));
-      _;
-    }
-
-    /**
      * @dev Fallback function that can be used to buy tokens.
      */
     function() external payable {
@@ -145,9 +186,10 @@ contract EmalPresale is EmalWhitelist {
      * @dev Function for buying tokens
      * @param beneficiary The address that should receive bought tokens
      */
-    function buyTokensUsingEther(address beneficiary) onlyIfWhitelisted(beneficiary) public payable {
+    function buyTokensUsingEther(address beneficiary) whenNotPaused public payable {
         require(beneficiary != address(0));
         require(validPurchase());
+        require(isWhitelisted(beneficiary));
 
         uint256 weiAmount = msg.value;
         uint256 returnToSender = 0;
@@ -290,7 +332,7 @@ contract EmalPresale is EmalWhitelist {
      * @param beneficiary The address of the investor or the bounty user
      * @param tokenCount The number of tokens to be allocated to this address
      */
-    function allocateTokens(address beneficiary, uint256 tokenCount) onlyOwner public returns(bool success) {
+    function allocateTokens(address beneficiary, uint256 tokenCount) onlyOwner whenNotPaused public returns(bool success) {
         require(beneficiary != address(0));
         require(validAllocation(tokenCount));
 
