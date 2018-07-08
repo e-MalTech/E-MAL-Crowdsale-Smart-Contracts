@@ -77,3 +77,15 @@ Time based crowdsale implemented.
 mapping(address => uint256) etherInvestments: Investor contributions made in ether only.
 Storing ether in smartcontract (coming from fallback function) is a really bad idea and has to be moved to Emal Business wallet.
 ```
+
+### EMAL PRESALE
+
+```
+Same as EMALCrowdsale except no soft cap and refund functionality
+Doesnt set start time for token transfers after presale goals, hardcap or time ended.
+```
+
+
+### EMAL VESTING FACTORY AND CONTRACT
+
+![alt text](https://github.com/AudaceLLC/E-MAL-Crowdsale-Smart-Contracts/blob/master/VestingFactoryLayout.PNG?raw=true)
