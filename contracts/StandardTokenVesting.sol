@@ -116,7 +116,7 @@ contract StandardTokenVesting {
 
   /**
    * @dev Calculates the amount that has already vested.
-   * @param token ERC20 token which is being vested
+   * @param token Emal token which is being vested
    */
   function vestedAmount(EmalToken token) public view returns (uint256) {
     uint256 currentBalance = token.balanceOf(this);

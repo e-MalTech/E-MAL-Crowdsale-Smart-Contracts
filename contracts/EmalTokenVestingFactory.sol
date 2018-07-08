@@ -13,7 +13,8 @@ import './StandardTokenVesting.sol';
   */
 
 contract EmalTokenVestingFactory {
-    event CreatedStandardVestingContract(StandardTokenVesting vesting);
+
+    mapping (address => address) vestingContractAddresses;
 
     // Owner of the token
     address public owner;
@@ -23,22 +24,35 @@ contract EmalTokenVestingFactory {
         _;
     }
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
     function transferOwnership(address newOwner) public onlyOwner {
         require(newOwner != address(0));
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
 
+    event CreatedStandardVestingContract(StandardTokenVesting vesting);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    constructor() public {
+        owner = msg.sender;
+    }
+
 
     function create(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration) onlyOwner public returns (StandardTokenVesting) {
         StandardTokenVesting vesting = new StandardTokenVesting(_beneficiary, _start, _cliff, _duration, true);
+
+        vestingContractAddresses[_beneficiary] = vesting;
         emit CreatedStandardVestingContract(vesting);
+        /** @dev Deploy EmalTokenVestingFactory, and use it to create vesting contracts
+          * for founders, advisors and developers. after creation transfer Emal tokens
+          * to those addresses and vesting vaults will be initialised.
+          */
         return vesting;
     }
-    /** @dev Deploy EmalTokenVestingFactory, and use it to create vesting contracts
-      * for founders, advisors and developers. after creation transfer Emal tokens
-      * to those addresses and vesting vaults will be initialised.
-      */
+
+    function getVestingContractAddress() public view returns (address){
+        // require(vestingContractAddresses[msg.sender]);
+
+        return vestingContractAddresses[msg.sender];
+    }
 }
