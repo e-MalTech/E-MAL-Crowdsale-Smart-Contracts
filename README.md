@@ -82,4 +82,7 @@ Rate = 0.00000000000000462
 
 ### EMAL VESTING FACTORY AND CONTRACT
 
+- [x] StandardTokenVesting: A token holder contract that can release its token balance gradually like a typical vesting scheme, with a cliff and vesting period. Optionally revocable by the owner.
+- [x] Factory is a software design pattern for creating instances of a class. Using this pattern simplifies creating new vesting contracts and saves transaction costs (“gas”). Instead of deploying a new TokenVesting contract for each team member, we deploy a single instance of TokenVestingFactory that ensures the creation of new token vesting contracts.
+
 ![alt text](https://github.com/AudaceLLC/E-MAL-Crowdsale-Smart-Contracts/blob/master/VestingFactoryLayout.PNG?raw=true)
