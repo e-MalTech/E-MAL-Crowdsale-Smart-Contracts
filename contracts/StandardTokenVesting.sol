@@ -2,10 +2,8 @@
 
 pragma solidity ^0.4.24;
 
-import "./ERC20Basic.sol";
-import "./SafeERC20.sol";
-import "../../ownership/Ownable.sol";
-import "../../math/SafeMath.sol";
+import "./EmalToken.sol";
+import "./SafeMath.sol";
 
 
 /**
@@ -14,9 +12,8 @@ import "../../math/SafeMath.sol";
  * typical vesting scheme, with a cliff and vesting period. Optionally revocable by the
  * owner.
  */
-contract StandardTokenVesting is Ownable {
+contract StandardTokenVesting {
   using SafeMath for uint256;
-  using SafeERC20 for ERC20Basic;
 
   event Released(uint256 amount);
   event Revoked();
@@ -33,6 +30,23 @@ contract StandardTokenVesting is Ownable {
   mapping (address => uint256) public released;
   mapping (address => bool) public revoked;
 
+  // Owner of the token
+  address public owner;
+
+  modifier onlyOwner() {
+      require(msg.sender == owner);
+      _;
+  }
+
+  function transferOwnership(address newOwner) public onlyOwner {
+      require(newOwner != address(0));
+      emit OwnershipTransferred(owner, newOwner);
+      owner = newOwner;
+  }
+
+
+
+
   /**
    * @dev Creates a vesting contract that vests its balance of any ERC20 token to the
    * _beneficiary, gradually in a linear fashion until _start + _duration. By then all
@@ -43,21 +57,14 @@ contract StandardTokenVesting is Ownable {
    * @param _duration duration in seconds of the period in which the tokens will vest
    * @param _revocable whether the vesting is revocable or not
    */
-  constructor(
-    address _beneficiary,
-    uint256 _start,
-    uint256 _cliff,
-    uint256 _duration,
-    bool _revocable
-  )
-    public
-  {
+  constructor(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration, bool _revocable) public {
     require(_beneficiary != address(0));
     require(_cliff <= _duration);
 
     beneficiary = _beneficiary;
     revocable = _revocable;
     duration = _duration;
+    owner = msg.sender;
     cliff = _start.add(_cliff);
     start = _start;
   }
@@ -66,14 +73,14 @@ contract StandardTokenVesting is Ownable {
    * @notice Transfers vested tokens to beneficiary.
    * @param token ERC20 token which is being vested
    */
-  function release(ERC20Basic token) public {
+  function release(EmalToken token) public {
     uint256 unreleased = releasableAmount(token);
 
     require(unreleased > 0);
 
     released[token] = released[token].add(unreleased);
 
-    token.safeTransfer(beneficiary, unreleased);
+    token.Transfer(beneficiary, unreleased);
 
     emit Released(unreleased);
   }
@@ -83,7 +90,7 @@ contract StandardTokenVesting is Ownable {
    * remain in the contract, the rest are returned to the owner.
    * @param token ERC20 token which is being vested
    */
-  function revoke(ERC20Basic token) public onlyOwner {
+  function revoke(EmalToken token) public onlyOwner {
     require(revocable);
     require(!revoked[token]);
 
@@ -94,7 +101,7 @@ contract StandardTokenVesting is Ownable {
 
     revoked[token] = true;
 
-    token.safeTransfer(owner, refund);
+    token.Transfer(owner, refund);
 
     emit Revoked();
   }
@@ -103,7 +110,7 @@ contract StandardTokenVesting is Ownable {
    * @dev Calculates the amount that has already vested but hasn't been released yet.
    * @param token ERC20 token which is being vested
    */
-  function releasableAmount(ERC20Basic token) public view returns (uint256) {
+  function releasableAmount(EmalToken token) public view returns (uint256) {
     return vestedAmount(token).sub(released[token]);
   }
 
@@ -111,7 +118,7 @@ contract StandardTokenVesting is Ownable {
    * @dev Calculates the amount that has already vested.
    * @param token ERC20 token which is being vested
    */
-  function vestedAmount(ERC20Basic token) public view returns (uint256) {
+  function vestedAmount(EmalToken token) public view returns (uint256) {
     uint256 currentBalance = token.balanceOf(this);
     uint256 totalBalance = currentBalance.add(released[token]);
 

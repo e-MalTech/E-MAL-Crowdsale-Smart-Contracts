@@ -15,6 +15,8 @@ import './StandardTokenVesting.sol';
 contract EmalTokenVestingFactory is Ownable {
     event CreatedStandardVestingContract(StandardTokenVesting vesting);
 
+
+
     function create(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration) onlyOwner public returns (StandardTokenVesting) {
         StandardTokenVesting vesting = new StandardTokenVesting(_beneficiary, _start, _cliff, _duration, true);
         emit CreatedStandardVestingContract(vesting);
