@@ -1,7 +1,6 @@
 pragma solidity ^ 0.4 .24;
 
-import "zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "./SafeMath.sol";
 import './StandardToken.sol';
 
 contract EmalToken is StandardToken {
@@ -14,7 +13,7 @@ contract EmalToken is StandardToken {
 
     /* uint256 public constant TOTAL_SUPPLY = 10000000 * 1 ether; */
 
-    uint256 public constant totalSupply_;
+    uint256 public totalSupply_;
     uint256 private constant TOKEN_UNIT = 10 ** uint256(decimals);
     uint256 public constant privatePresaleAmount = 50000000 * TOKEN_UNIT; // Tokens early investors
     uint256 public constant publicCrowdsaleAmount = 100000000 * TOKEN_UNIT; // Tokens for public through crowdsale
@@ -34,6 +33,8 @@ contract EmalToken is StandardToken {
         require(msg.sender == owner);
         _;
     }
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
 
     constructor() public {
@@ -77,16 +78,13 @@ contract EmalToken is StandardToken {
     }
 
     function transferOwnership(address newOwner) public onlyOwner {
-        super.transferOwnership(newOwner);
+      require(newOwner != address(0));
+      emit OwnershipTransferred(owner, newOwner);
+      owner = newOwner;
     }
 
     /* Do not accept ETH */
     function() public payable {
         revert();
-    }
-
-    /* Owner can transfer out any accidentally sent ERC20 tokens */
-    function transferAnyERC20Token(address _tokenAddress, uint _tokens) public onlyOwner returns(bool success) {
-        return ERC20(_tokenAddress).transfer(owner, _tokens);
     }
 }

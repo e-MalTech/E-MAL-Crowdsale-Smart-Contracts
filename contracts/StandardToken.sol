@@ -36,7 +36,7 @@ contract StandardToken is ERC20Token {
 
   // Transfer tokens from one address to another
   function transferFrom(address from, address to, uint256 tokens) public returns (bool success){
-      require(_to != address(0));
+      require(to != address(0));
       require(tokens > 0 && tokens <= balances[from]);
       require(tokens <= allowed[from][msg.sender]);
 

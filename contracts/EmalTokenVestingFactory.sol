@@ -12,9 +12,24 @@ import './StandardTokenVesting.sol';
   * that ensures the creation of new token vesting contracts.
   */
 
-contract EmalTokenVestingFactory is Ownable {
+contract EmalTokenVestingFactory {
     event CreatedStandardVestingContract(StandardTokenVesting vesting);
 
+    // Owner of the token
+    address public owner;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    function transferOwnership(address newOwner) public onlyOwner {
+        require(newOwner != address(0));
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
 
 
     function create(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration) onlyOwner public returns (StandardTokenVesting) {

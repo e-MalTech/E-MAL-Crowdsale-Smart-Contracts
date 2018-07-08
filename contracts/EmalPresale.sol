@@ -1,6 +1,6 @@
 pragma solidity ^ 0.4 .24;
 
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "./SafeMath.sol";
 import './EmalWhitelist.sol';
 
 // for mist wallet compatibility
@@ -188,7 +188,7 @@ contract EmalPresale is EmalWhitelist {
     }
 
 
-    function _postValidationUpdateTokenContract() internal {
+    function _postValidationUpdateTokenContract() pure internal {
       /** @dev Do nothing for now
         */
     }
@@ -349,7 +349,6 @@ contract EmalPresale is EmalWhitelist {
     /**
      * @dev Public function that KYC beneficiaries can use to claim the tokens allocated to them,
      * @dev after the Crowdsale has ended to their address
-     * @param beneficiary address of the investor or the bounty user
      */
     function claimAllocatedTokens() hasPresaleEnded public returns(bool success) {
         /* investments of the investor or bounty alocated okens for bounty users, should be greater than 0 */

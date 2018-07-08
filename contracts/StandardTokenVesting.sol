@@ -17,6 +17,7 @@ contract StandardTokenVesting {
 
   event Released(uint256 amount);
   event Revoked();
+  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
   // beneficiary of tokens after they are released
   address public beneficiary;
@@ -37,7 +38,6 @@ contract StandardTokenVesting {
       require(msg.sender == owner);
       _;
   }
-
   function transferOwnership(address newOwner) public onlyOwner {
       require(newOwner != address(0));
       emit OwnershipTransferred(owner, newOwner);
@@ -80,7 +80,7 @@ contract StandardTokenVesting {
 
     released[token] = released[token].add(unreleased);
 
-    token.Transfer(beneficiary, unreleased);
+    token.transfer(beneficiary, unreleased);
 
     emit Released(unreleased);
   }
@@ -101,7 +101,7 @@ contract StandardTokenVesting {
 
     revoked[token] = true;
 
-    token.Transfer(owner, refund);
+    token.transfer(owner, refund);
 
     emit Revoked();
   }
