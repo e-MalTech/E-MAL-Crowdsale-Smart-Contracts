@@ -16,10 +16,13 @@ contract EmalToken is StandardToken {
 
     uint256 public constant totalSupply_;
     uint256 private constant TOKEN_UNIT = 10 ** uint256(decimals);
-    uint256 public constant publicAmount = 100000000 * TOKEN_UNIT; // Tokens for public
+    uint256 public constant privatePresaleAmount = 50000000 * TOKEN_UNIT; // Tokens early investors
+    uint256 public constant publicCrowdsaleAmount = 100000000 * TOKEN_UNIT; // Tokens for public through crowdsale
+    uint256 public constant totalVestingAmount = 50000000 * TOKEN_UNIT; // Tokens founders, advisors and developers.
 
-    uint public startTime;
+    uint public startTimeForTransfers;
     address public crowdsaleAddress;
+    address public presaleAddress;
 
     // Owner of the token
     address public owner;
@@ -34,7 +37,7 @@ contract EmalToken is StandardToken {
 
 
     constructor() public {
-        startTime = now + 365 days;
+        startTimeForTransfers = now + 365 days;
         totalSupply_ = 200000000 * TOKEN_UNIT;
         owner = msg.sender;
         balances[owner] = totalSupply_;
@@ -43,25 +46,30 @@ contract EmalToken is StandardToken {
 
     function setCrowdsaleAddress(address _crowdsaleAddress) external onlyOwner {
         crowdsaleAddress = _crowdsaleAddress;
-        assert(approve(crowdsaleAddress, publicAmount));
+        assert(approve(crowdsaleAddress, publicCrowdsaleAmount));
     }
 
-    function setStartTime(uint _startTime) external {
+    function setPresaleAddress(address _presaleAddress) external onlyOwner {
+        presaleAddress = _presaleAddress;
+        assert(approve(presaleAddress, privatePresaleAmount));
+    }
+
+    function setStartTimeForTokenTransfers(uint _startTimeForTransfers) external {
         require(msg.sender == crowdsaleAddress);
-        if (_startTime < startTime) {
-            startTime = _startTime;
+        if (_startTimeForTransfers < startTimeForTransfers) {
+            startTimeForTransfers = _startTimeForTransfers;
         }
     }
 
     function transfer(address _to, uint _value) public returns(bool) {
         // Only possible after ICO ends
-        require(now >= startTime);
+        require(now >= startTimeForTransfers);
         return super.transfer(_to, _value);
     }
 
     function transferFrom(address _from, address _to, uint _value) public returns(bool) {
         // Only owner's tokens can be transferred before ICO ends
-        if (now < startTime) {
+        if (now < startTimeForTransfers) {
             require(_from == owner);
         }
 

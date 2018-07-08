@@ -7,12 +7,11 @@ import './EmalWhitelist.sol';
 contract EmalToken {
     // add function prototypes of only those used here
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
-    function setStartTimeForTokenTransfers(uint _startTime) external;
 }
 
 
 /**
- * EMAL Crowdsale smart contract for eMal ICO. Is a FinalizableCrowdsale
+ * EMAL Presale smart contract for eMal ICO. Is a FinalizableCrowdsale
  * This will collect funds from investors in ETH directly from the investor post which it will emit an event
  * The event will then be collected by eMal backend servers and based on the amount of ETH sent and ETH rate
  * in terms of DHS, the tokens to be allocated will be calculated by the backend server and then it will call
@@ -22,7 +21,7 @@ contract EmalToken {
  * tokens API to allocate tokens to the investor.
  */
 
-contract EmalCrowdsale is EmalWhitelist {
+contract EmalPresale is EmalWhitelist {
 
     using SafeMath
     for uint256;
@@ -56,7 +55,7 @@ contract EmalCrowdsale is EmalWhitelist {
     mapping(address => uint256) etherInvestments;
 
     // Total ether invested during the crowdsale
-    uint256 public totalEtherRaisedByCrowdsale = 0;
+    uint256 public totalEtherRaisedByPresale = 0;
 
     // Count of allocated tokens (not issued only allocated) for each investor or bounty user
     mapping(address => uint256) public allocatedTokens;
@@ -64,16 +63,8 @@ contract EmalCrowdsale is EmalWhitelist {
     // Count of allocated tokens issued to each investor and bounty user.
     mapping(address => uint256) public amountOfAllocatedTokensGivenOut;
 
-    // Soft cap in EMAL tokens
-    uint256 constant public softCap = 10000000 * (10 ** 18);
-
     // Hard cap in EMAL tokens
     uint256 constant public hardCap = 100000000 * (10 ** 18);
-
-    // Switched to true once token contract is notified of when to enable token transfers
-    bool private isStartTimeSetForTokenTransfers = false;
-
-
 
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -100,16 +91,6 @@ contract EmalCrowdsale is EmalWhitelist {
      * @param tokenCount The amount of tokens that were sent
      */
     event IssuedAllocatedTokens(address indexed beneficiary, uint256 tokenCount);
-
-    /**
-     * @dev Event for refund logging
-     * @param receiver The address that received the refund
-     * @param amount The amount that is being refunded (in wei)
-     */
-    event Refund(address indexed receiver, uint256 amount);
-
-
-
 
     /**
      * @param _startTime Unix timestamp for the start of the token sale
@@ -143,21 +124,17 @@ contract EmalCrowdsale is EmalWhitelist {
         _;
     }
 
-    modifier hasCrowdsaleEnded() {
+    modifier hasPresaleEnded() {
       require(!(now >= startTime && now <= endTime) && (totalTokensSoldandAllocated < hardCap));
       _;
     }
 
     /**
-     * @dev Fallback function that can be used to buy tokens. Or in case of the owner, return ether to allow refunds.
+     * @dev Fallback function that can be used to buy tokens.
      */
     function() external payable {
         if (isWhitelisted(msg.sender)) {
-            if (msg.sender == wallet) {
-                require(hasEnded() && totalTokensSoldandAllocated < softCap);
-            } else {
-                buyTokensUsingEther(msg.sender);
-            }
+            buyTokensUsingEther(msg.sender);
         } else {
             /* Do not accept ETH */
             revert();
@@ -191,7 +168,7 @@ contract EmalCrowdsale is EmalWhitelist {
         // update state and balances
         totalTokensSoldandAllocated = totalTokensSoldandAllocated.add(tokens);
         etherInvestments[beneficiary] = etherInvestments[beneficiary].add(weiAmount);
-        totalEtherRaisedByCrowdsale = totalEtherRaisedByCrowdsale.add(weiAmount);
+        totalEtherRaisedByPresale = totalEtherRaisedByPresale.add(weiAmount);
 
 
         // assert implies it should never fail
@@ -212,22 +189,8 @@ contract EmalCrowdsale is EmalWhitelist {
 
 
     function _postValidationUpdateTokenContract() internal {
-      /** @dev If hard cap is reachde allow token transfers after two weeks
-        * @dev Allow users to transfer tokens only after hardCap is reached
-        * @dev Notiy token contract about startTime to start transfers
+      /** @dev Do nothing for now
         */
-      if (totalTokensSoldandAllocated == hardCap) {
-          token.setStartTimeForTokenTransfers(now + 2 weeks);
-      }
-
-      /** @dev If its the first token sold or allocated then set s, allow after 2 weeks
-        * @dev Allow users to transfer tokens only after ICO crowdsale ends.
-        * @dev Notify token contract about sale end time
-        */
-      if (!isStartTimeSetForTokenTransfers) {
-          isStartTimeSetForTokenTransfers = true;
-          token.setStartTimeForTokenTransfers(endTime + 2 weeks);
-      }
     }
 
     /**
@@ -296,24 +259,6 @@ contract EmalCrowdsale is EmalWhitelist {
     }
 
     /**
-     * @dev Returns ether to token holders in case soft cap is not reached.
-     */
-    function claimRefund() public onlyOwner {
-        require(hasEnded());
-        require(totalTokensSoldandAllocated < softCap);
-
-        uint256 amount = etherInvestments[msg.sender];
-
-        if (address(this).balance >= amount) {
-            etherInvestments[msg.sender] = 0;
-            if (amount > 0) {
-                msg.sender.transfer(amount);
-                emit Refund(msg.sender, amount);
-            }
-        }
-    }
-
-    /**
      * @dev Gets the balance of the specified address.
      * @param _owner The address to query the the balance of.
      * @return An uint256 representing the amount owned by the passed address.
@@ -331,8 +276,6 @@ contract EmalCrowdsale is EmalWhitelist {
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
-
-
 
 
     /**
@@ -403,13 +346,12 @@ contract EmalCrowdsale is EmalWhitelist {
         return allocatedTokens[beneficiary];
     }
 
-
     /**
      * @dev Public function that KYC beneficiaries can use to claim the tokens allocated to them,
      * @dev after the Crowdsale has ended to their address
      * @param beneficiary address of the investor or the bounty user
      */
-    function claimAllocatedTokens() hasCrowdsaleEnded public returns(bool success) {
+    function claimAllocatedTokens() hasPresaleEnded public returns(bool success) {
         /* investments of the investor or bounty alocated okens for bounty users, should be greater than 0 */
         require(allocatedTokens[msg.sender] > 0);
 
@@ -431,7 +373,7 @@ contract EmalCrowdsale is EmalWhitelist {
      * @dev after the Crowdsale has ended to their address
      * @param beneficiary address of the investor or the bounty user
      */
-    function issueTokensToAllocatedUsers(address beneficiary) onlyOwner hasCrowdsaleEnded public returns(bool success) {
+    function issueTokensToAllocatedUsers(address beneficiary) onlyOwner hasPresaleEnded public returns(bool success) {
         /* investments of the investor or bounty alocated okens for bounty users, should be greater than 0 */
         require(beneficiary != address(0));
         require(allocatedTokens[beneficiary] > 0);
