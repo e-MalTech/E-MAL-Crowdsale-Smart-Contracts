@@ -26,6 +26,8 @@ CHANGELOG:
 - [x] Added Approval events as per ERC20 interface.
 - [x] Set crowdsale addresses from token contract, define public ico tokens
 - [x] Allow ownership transfer of token contract.
+- [ ] Add minting functionality
+- [ ] Add token burning functionality
 
 
 ### EMAL WHITELIST CONTRACT
@@ -39,6 +41,8 @@ CHANGELOG:
 - [x] Updated Code documentation
 - [x] Added access roles so that only admin can add and remove from Emal’s whitelist. This is done because the each investor has to complete their KYC procedure with Emal then only they are allowed to buy tokens. Prevent normal people from calling addtowhitelist directly.
 - [x] Added a modifier onlyIfWhitelisted for easier access in function definition.
+- [ ] Share same whitelist contract between presale and crowdsale.
+- [ ] Add events to whitelist contract.
 
 
 ### EMAL CROWDSALE CONTRACT
@@ -84,5 +88,6 @@ Rate = 0.00000000000000462
 
 - [x] StandardTokenVesting: A token holder contract that can release its token balance gradually like a typical vesting scheme, with a cliff and vesting period. Optionally revocable by the owner.
 - [x] Factory is a software design pattern for creating instances of a class. Using this pattern simplifies creating new vesting contracts and saves transaction costs (“gas”). Instead of deploying a new TokenVesting contract for each team member, we deploy a single instance of TokenVestingFactory that ensures the creation of new token vesting contracts.
+- [ ] Update vesting factory with more functionality.
 
 ![alt text](https://github.com/AudaceLLC/E-MAL-Crowdsale-Smart-Contracts/blob/master/VestingFactoryLayout.PNG?raw=true)
