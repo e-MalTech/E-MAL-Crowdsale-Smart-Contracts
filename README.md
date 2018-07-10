@@ -12,6 +12,7 @@ REFERENCE URLs:
 
 - https://openzeppelin.org/api/docs/token_ERC20_StandardToken.html
 - https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+- https://www.forbes.com/sites/eidoo/2017/11/29/token-burning-and-other-crypto-jargon-simplified
 
 
 CHANGELOG:
@@ -26,9 +27,9 @@ CHANGELOG:
 - [x] Added Approval events as per ERC20 interface.
 - [x] Set crowdsale addresses from token contract, define public ico tokens
 - [x] Allow ownership transfer of token contract.
-- [ ] Add minting functionality
-- [ ] Add token burning functionality
-
+- [x] Add minting functionality
+- [x] Add token burning functionality. Just think about this scenario, if we were expecting to raise 1 million dollars with 1 million coins, then it means that the price of each token will be $1. If we raise just 100k dollars, then it means that each token will be worth $0.10, but if we promised that all the tokens would be worth $1, then we can not break that promise, and this is why we decide to burn the tokens, and there are going to be 100k of tokens in circulation, with 100k of marketcap ($1 each).
+- [ ] change token allocation values for presale and crowdsale.
 
 ### EMAL WHITELIST CONTRACT
 
