@@ -1,4 +1,4 @@
-pragma solidity ^ 0.4 .24;
+pragma solidity ^ 0.4.24;
 
 import "./SafeMath.sol";
 import './StandardToken.sol';
@@ -6,27 +6,43 @@ import './StandardToken.sol';
 contract EmalToken is StandardToken {
 
     using SafeMath for uint;
+    using SafeMath for uint256;
 
     string public constant symbol = "EMAL";
     string public constant name = "E-Mal Token";
     uint8 public constant decimals = 18;
 
-    /* uint256 public constant TOTAL_SUPPLY = 10000000 * 1 ether; */
+    // Total Number of tokens ever goint to be minted. 1 BILLION EML tokens.
+    //uint256 private constant mintingCappedAmount = 1000000000 * 10 ** uint256(decimals);
 
-    uint256 public totalSupply_;
-    uint256 private constant TOKEN_UNIT = 10 ** uint256(decimals);
-    uint256 public constant privatePresaleAmount = 50000000 * TOKEN_UNIT; // Tokens early investors
-    uint256 public constant publicCrowdsaleAmount = 100000000 * TOKEN_UNIT; // Tokens for public through crowdsale
-    uint256 public constant totalVestingAmount = 50000000 * TOKEN_UNIT; // Tokens founders, advisors and developers.
+    // 23% of initial supply
+    // Tokens early investors. 13% for Presale 1. + 10% for bonuses.
+    uint256 public constant privatePresaleAmount = 23000000 * 10 ** uint256(decimals);
+
+    // 59% of inital supply
+    // Tokens for public through crowdsale. 57% Crowdsale and 2% bounties.
+    uint256 public constant publicCrowdsaleAmount = 59000000 * 10 ** uint256(decimals);
+
+    // 18% of inital supply.
+    // Tokens for partners and advisors and project team. 18% of inital supply.
+    uint256 public constant vestingAmount = 18000000 * 10 ** uint256(decimals);
+
+    // Total initial supply of tokens to be given away initially. Rested is minted
+    uint256 private initialSupply = privatePresaleAmount.add(publicCrowdsaleAmount.add(vestingAmount));
+
 
     uint public startTimeForTransfers;
-    address public crowdsaleAddress;
+
     address public presaleAddress;
+    address public crowdsaleAddress;
+    address public vestingAddress;
 
     // Owner of the token
     address public owner;
 
     bool public mintingFinished = false;
+
+    mapping (address => bool) public frozenAccount;
 
     modifier onlyOwner() {
         require(msg.sender == owner);
@@ -43,7 +59,8 @@ contract EmalToken is StandardToken {
       _;
     }
 
-
+    /* This generates a public event on the blockchain that will notify clients */
+    event FrozenFunds(address target, bool frozen);
     event Mint(address indexed to, uint256 amount);
     event MintFinished();
     event Burn(address indexed burner, uint256 value);
@@ -51,11 +68,22 @@ contract EmalToken is StandardToken {
 
 
     constructor() public {
-        startTimeForTransfers = now + 365 days;
-        totalSupply_ = 200000000 * TOKEN_UNIT;
+
+        //actual constructor initialisation value
+        // startTimeForTransfers = now + 365 days;
+
+        // for testing purposes
+        startTimeForTransfers = now + 0 days;
+
+        _totalSupply = initialSupply;
         owner = msg.sender;
-        balances[owner] = totalSupply_;
+        balances[owner] = _totalSupply;
         emit Transfer(address(0), owner, balances[owner]);
+    }
+
+    function setPresaleAddress(address _presaleAddress) external onlyOwner {
+        presaleAddress = _presaleAddress;
+        assert(approve(presaleAddress, privatePresaleAmount));
     }
 
     function setCrowdsaleAddress(address _crowdsaleAddress) external onlyOwner {
@@ -63,9 +91,9 @@ contract EmalToken is StandardToken {
         assert(approve(crowdsaleAddress, publicCrowdsaleAmount));
     }
 
-    function setPresaleAddress(address _presaleAddress) external onlyOwner {
-        presaleAddress = _presaleAddress;
-        assert(approve(presaleAddress, privatePresaleAmount));
+    function setVestingAddress(address _vestingAddress) external onlyOwner {
+        vestingAddress = _vestingAddress;
+        assert(approve(vestingAddress, vestingAmount));
     }
 
     function setStartTimeForTokenTransfers(uint _startTimeForTransfers) external {
@@ -78,16 +106,31 @@ contract EmalToken is StandardToken {
     function transfer(address _to, uint _value) public returns(bool) {
         // Only possible after ICO ends
         require(now >= startTimeForTransfers);
+        require(!frozenAccount[msg.sender]);
+        require(!frozenAccount[_to]);
+
         return super.transfer(_to, _value);
     }
 
     function transferFrom(address _from, address _to, uint _value) public returns(bool) {
+        require(!frozenAccount[msg.sender]);
+        require(!frozenAccount[_to]);
+
         // Only owner's tokens can be transferred before ICO ends
         if (now < startTimeForTransfers) {
             require(_from == owner);
         }
 
         return super.transferFrom(_from, _to, _value);
+    }
+
+   /** @notice `freeze? Prevent | Allow` `target` from sending & receiving tokens
+     * @param target Address to be frozen
+     * @param freeze either to freeze it or not
+     */
+    function freezeAccount(address target, bool freeze) onlyOwner public {
+        frozenAccount[target] = freeze;
+        emit FrozenFunds(target, freeze);
     }
 
 
@@ -98,14 +141,14 @@ contract EmalToken is StandardToken {
      * @return A boolean that indicates if the operation was successful.
      */
     function mint(address _to, uint256 _amount) hasMintPermission canMint public returns (bool) {
-      totalSupply_ = totalSupply_.add(_amount);
+      _totalSupply = _totalSupply.add(_amount);
       balances[_to] = balances[_to].add(_amount);
       emit Mint(_to, _amount);
       emit Transfer(address(0), _to, _amount);
       return true;
     }
 
-    /**
+   /**
      * @dev Function to stop minting new tokens.
      * @return True if the operation was successful.
      */
@@ -127,15 +170,12 @@ contract EmalToken is StandardToken {
        require(_value <= balances[_who]);
        // no need to require value <= totalSupply, since that would imply the
        // sender's balance is greater than the totalSupply, which *should* be an assertion failure
-   
+
        balances[_who] = balances[_who].sub(_value);
-       totalSupply_ = totalSupply_.sub(_value);
+       _totalSupply = _totalSupply.sub(_value);
        emit Burn(_who, _value);
        emit Transfer(_who, address(0), _value);
      }
-   }
-
-
 
     function transferOwnership(address newOwner) public onlyOwner {
       require(newOwner != address(0));

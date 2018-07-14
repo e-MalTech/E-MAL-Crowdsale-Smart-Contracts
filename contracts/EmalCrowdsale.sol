@@ -11,6 +11,11 @@ contract EmalToken {
     function setStartTimeForTokenTransfers(uint _startTime) external;
 }
 
+contract EmalWhitelist {
+    // add function prototypes of only those used here
+    function isWhitelisted(address _addr) public view returns(bool);
+}
+
 
 /**
  * EMAL Crowdsale smart contract for eMal ICO. Is a Finalizable, Timed, capped, pausable Crowdsale
@@ -23,7 +28,7 @@ contract EmalToken {
  * tokens API to allocate tokens to the investor.
  */
 
-contract EmalCrowdsale is EmalWhitelist {
+contract EmalCrowdsale {
 
     using SafeMath
     for uint256;
@@ -34,6 +39,9 @@ contract EmalCrowdsale is EmalWhitelist {
 
     // The token being sold
     EmalToken public token;
+
+    // Whitelist contract used to store whitelisted addresses
+    EmalWhitelist public list;
 
     // Owner of the token
     address public owner;
@@ -66,10 +74,10 @@ contract EmalCrowdsale is EmalWhitelist {
     mapping(address => uint256) public amountOfAllocatedTokensGivenOut;
 
     // Soft cap in EMAL tokens
-    uint256 constant public softCap = 10000000 * (10 ** 18);
+    uint256 constant public softCap = 100000 * (10 ** 18);
 
     // Hard cap in EMAL tokens
-    uint256 constant public hardCap = 100000000 * (10 ** 18);
+    uint256 constant public hardCap = 59000000 * (10 ** 18);
 
     // Switched to true once token contract is notified of when to enable token transfers
     bool private isStartTimeSetForTokenTransfers = false;
@@ -170,22 +178,24 @@ contract EmalCrowdsale is EmalWhitelist {
      * @param _wallet Ethereum address to which the invested funds are forwarded
      * @param _token Address of the token that will be rewarded for the investors
      */
-    constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token) public {
+    constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
         require(_startTime >= now);
         require(_endTime >= _startTime);
         require(_wallet != address(0));
         require(_token != address(0));
+        require(_list != address(0));
 
         startTime = _startTime;
         endTime = _endTime;
         wallet = _wallet;
         owner = msg.sender;
         token = EmalToken(_token);
+        list = EmalWhitelist(_list);
 
         // to allow refunds, ie: ether can be sent by _wallet
-        super.addToWhitelist(wallet);
+        // super.addToWhitelist(wallet);
         // add owner also to whitelist
-        super.addToWhitelist(msg.sender);
+        // super.addToWhitelist(msg.sender);
     }
 
     /**
@@ -204,8 +214,7 @@ contract EmalCrowdsale is EmalWhitelist {
         }
     }
 
-    /**
-     * @dev Function for buying tokens
+   /** @dev Function for buying tokens
      * @param beneficiary The address that should receive bought tokens
      */
     function buyTokensUsingEther(address beneficiary) whenNotPaused public payable {
@@ -253,7 +262,7 @@ contract EmalCrowdsale is EmalWhitelist {
 
 
     function _postValidationUpdateTokenContract() internal {
-        /** @dev If hard cap is reachde allow token transfers after two weeks
+       /** @dev If hard cap is reachde allow token transfers after two weeks
          * @dev Allow users to transfer tokens only after hardCap is reached
          * @dev Notiy token contract about startTime to start transfers
          */
@@ -261,7 +270,7 @@ contract EmalCrowdsale is EmalWhitelist {
             token.setStartTimeForTokenTransfers(now + 2 weeks);
         }
 
-        /** @dev If its the first token sold or allocated then set s, allow after 2 weeks
+       /** @dev If its the first token sold or allocated then set s, allow after 2 weeks
          * @dev Allow users to transfer tokens only after ICO crowdsale ends.
          * @dev Notify token contract about sale end time
          */
@@ -269,24 +278,6 @@ contract EmalCrowdsale is EmalWhitelist {
             isStartTimeSetForTokenTransfers = true;
             token.setStartTimeForTokenTransfers(endTime + 2 weeks);
         }
-    }
-
-    /**
-     * @dev Adds an investor to whitelist
-     * @param _addr The address to user to be added to the whitelist, signifies that the user completed KYC requirements.
-     */
-    function addWhitelistInvestor(address _addr) onlyOwner public returns(bool success) {
-        addToWhitelist(_addr);
-        return true;
-    }
-
-    /**
-     * @dev Removes an investor's address from whitelist
-     * @param _addr The address to user to be added to the whitelist, signifies that the user completed KYC requirements.
-     */
-    function removeWhitelistInvestor(address _addr) onlyOwner public returns(bool success) {
-        removeFromWhitelist(_addr);
-        return true;
     }
 
     function setRate(uint256 _value) onlyOwner public {
@@ -372,9 +363,6 @@ contract EmalCrowdsale is EmalWhitelist {
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
-
-
-
 
     /**
      * BELOW ARE FUNCTIONS THAT HANDLE INVESTMENTS IN FIAT AND BTC.
@@ -488,9 +476,4 @@ contract EmalCrowdsale is EmalWhitelist {
         return true;
     }
 
-    /* @dev Set the target token */
-    function setToken(EmalToken token_addr) onlyOwner public returns(bool success) {
-        token = token_addr;
-        return true;
-    }
 }

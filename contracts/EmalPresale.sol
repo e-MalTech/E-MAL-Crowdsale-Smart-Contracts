@@ -1,12 +1,15 @@
 pragma solidity ^ 0.4 .24;
 
 import "./SafeMath.sol";
-import './EmalWhitelist.sol';
 
-// for mist wallet compatibility
 contract EmalToken {
     // add function prototypes of only those used here
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
+}
+
+contract EmalWhitelist {
+    // add function prototypes of only those used here
+    function isWhitelisted(address investorAddr) public view returns(bool whitelisted);
 }
 
 
@@ -21,7 +24,7 @@ contract EmalToken {
  * tokens API to allocate tokens to the investor.
  */
 
-contract EmalPresale is EmalWhitelist {
+contract EmalPresale {
 
     using SafeMath
     for uint256;
@@ -32,6 +35,9 @@ contract EmalPresale is EmalWhitelist {
 
     // The token being sold
     EmalToken public token;
+
+    // Whitelist contract used to store whitelisted addresses
+    EmalWhitelist public list;
 
     // Owner of the token
     address public owner;
@@ -152,7 +158,7 @@ contract EmalPresale is EmalWhitelist {
      * @param _wallet Ethereum address to which the invested funds are forwarded
      * @param _token Address of the token that will be rewarded for the investors
      */
-    constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token) public {
+    constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
         require(_startTime >= now);
         require(_endTime >= _startTime);
         require(_wallet != address(0));
@@ -163,18 +169,19 @@ contract EmalPresale is EmalWhitelist {
         wallet = _wallet;
         owner = msg.sender;
         token = EmalToken(_token);
+        list = EmalWhitelist(_list);
 
         // to allow refunds, ie: ether can be sent by _wallet
-        super.addToWhitelist(wallet);
+        // list.addToWhitelist(wallet);
         // add owner also to whitelist
-        super.addToWhitelist(msg.sender);
+        // list.addToWhitelist(msg.sender);
     }
 
     /**
      * @dev Fallback function that can be used to buy tokens.
      */
     function() external payable {
-        if (isWhitelisted(msg.sender)) {
+        if (list.isWhitelisted(msg.sender)) {
             buyTokensUsingEther(msg.sender);
         } else {
             /* Do not accept ETH */
@@ -189,7 +196,7 @@ contract EmalPresale is EmalWhitelist {
     function buyTokensUsingEther(address beneficiary) whenNotPaused public payable {
         require(beneficiary != address(0));
         require(validPurchase());
-        require(isWhitelisted(beneficiary));
+        require(list.isWhitelisted(beneficiary));
 
         uint256 weiAmount = msg.value;
         uint256 returnToSender = 0;
@@ -233,24 +240,6 @@ contract EmalPresale is EmalWhitelist {
     function _postValidationUpdateTokenContract() pure internal {
       /** @dev Do nothing for now
         */
-    }
-
-    /**
-     * @dev Adds an investor to whitelist
-     * @param _addr The address to user to be added to the whitelist, signifies that the user completed KYC requirements.
-     */
-    function addWhitelistInvestor(address _addr) onlyOwner public returns(bool success) {
-        addToWhitelist(_addr);
-        return true;
-    }
-
-    /**
-     * @dev Removes an investor's address from whitelist
-     * @param _addr The address to user to be added to the whitelist, signifies that the user completed KYC requirements.
-     */
-    function removeWhitelistInvestor(address _addr) onlyOwner public returns(bool success) {
-        removeFromWhitelist(_addr);
-        return true;
     }
 
     function setRate(uint256 _value) onlyOwner public {
