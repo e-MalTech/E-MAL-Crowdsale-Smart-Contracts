@@ -1,7 +1,6 @@
 pragma solidity ^ 0.4 .24;
 
 import "./SafeMath.sol";
-import './EmalWhitelist.sol';
 
 // for mist wallet compatibility
 contract EmalToken {
@@ -58,20 +57,28 @@ contract EmalCrowdsale {
      */
     uint256 public overridenRateValue = 0;
 
-    // Amount of tokens that were sold to ether investors plus tokens allocated to investors by server for fiat and btc investments.
-    uint256 public totalTokensSoldandAllocated;
-
     // Investor contributions made in ether only
-    mapping(address => uint256) etherInvestments;
+    mapping(address => uint256) public etherInvestments;
 
-    // Total ether invested during the crowdsale
+    mapping(address => uint256) public tokensSoldForEther;
+
     uint256 public totalEtherRaisedByCrowdsale = 0;
+
+    uint256 public totalTokensSoldByEtherInvestments = 0;
+
+
 
     // Count of allocated tokens (not issued only allocated) for each investor or bounty user
     mapping(address => uint256) public allocatedTokens;
 
     // Count of allocated tokens issued to each investor and bounty user.
     mapping(address => uint256) public amountOfAllocatedTokensGivenOut;
+
+    uint256 public totalTokensAllocated = 0;
+
+
+    // Amount of tokens that were sold to ether investors plus tokens allocated to investors by server for fiat and btc investments.
+    uint256 public totalTokensSoldandAllocated;
 
     // Soft cap in EMAL tokens
     uint256 constant public softCap = 100000 * (10 ** 18);
@@ -198,11 +205,11 @@ contract EmalCrowdsale {
         // super.addToWhitelist(msg.sender);
     }
 
-    /**
-     * @dev Fallback function that can be used to buy tokens. Or in case of the owner, return ether to allow refunds.
-     */
+   /** @dev Fallback function that can be used to buy tokens. Or in case of the
+    *  owner, return ether to allow refunds.
+    */
     function() external payable {
-        if (isWhitelisted(msg.sender)) {
+        if (list.isWhitelisted(msg.sender)) {
             if (msg.sender == wallet) {
                 require(hasEnded() && totalTokensSoldandAllocated < softCap);
             } else {
@@ -220,7 +227,7 @@ contract EmalCrowdsale {
     function buyTokensUsingEther(address beneficiary) whenNotPaused public payable {
         require(beneficiary != address(0));
         require(validPurchase());
-        require(isWhitelisted(beneficiary));
+        require(list.isWhitelisted(beneficiary));
 
         uint256 weiAmount = msg.value;
         uint256 returnToSender = 0;
@@ -239,9 +246,11 @@ contract EmalCrowdsale {
         }
 
         // update state and balances
-        totalTokensSoldandAllocated = totalTokensSoldandAllocated.add(tokens);
         etherInvestments[beneficiary] = etherInvestments[beneficiary].add(weiAmount);
+        tokensSoldForEther[beneficiary] = tokensSoldForEther[beneficiary].add(tokens);
+        totalTokensSoldByEtherInvestments = totalTokensSoldByEtherInvestments.add(tokens);
         totalEtherRaisedByCrowdsale = totalEtherRaisedByCrowdsale.add(weiAmount);
+        totalTokensSoldandAllocated = totalTokensSoldandAllocated.add(tokens);
 
 
         // assert implies it should never fail
@@ -327,6 +336,13 @@ contract EmalCrowdsale {
         return now > endTime || totalTokensSoldandAllocated >= hardCap;
     }
 
+    function crowdsaleStatus() public view returns(bool){
+        if (hasEnded() || paused){
+            return false;
+        }
+        return true;
+    }
+
     /**
      * @dev Returns ether to token holders in case soft cap is not reached.
      */
@@ -392,6 +408,7 @@ contract EmalCrowdsale {
 
         /* Update state and balances */
         allocatedTokens[beneficiary] = allocatedTokens[beneficiary].add(tokenCount);
+        totalTokensAllocated = totalTokensAllocated.add(tokenCount);
         totalTokensSoldandAllocated = totalTokensSoldandAllocated.add(tokenCount);
         emit TokensAllocated(beneficiary, tokens);
 

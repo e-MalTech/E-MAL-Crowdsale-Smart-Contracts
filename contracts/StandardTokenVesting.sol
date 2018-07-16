@@ -73,7 +73,7 @@ contract StandardTokenVesting {
    * @notice Transfers vested tokens to beneficiary.
    * @param token ERC20 token which is being vested
    */
-  function release(EmalToken token) public {
+  function release(EmalToken token) public returns (bool){
     uint256 unreleased = releasableAmount(token);
 
     require(unreleased > 0);
@@ -83,6 +83,7 @@ contract StandardTokenVesting {
     token.transfer(beneficiary, unreleased);
 
     emit Released(unreleased);
+    return true;
   }
 
   /**
@@ -90,7 +91,7 @@ contract StandardTokenVesting {
    * remain in the contract, the rest are returned to the owner.
    * @param token ERC20 token which is being vested
    */
-  function revoke(EmalToken token) public onlyOwner {
+  function revoke(EmalToken token) public onlyOwner returns(bool) {
     require(revocable);
     require(!revoked[token]);
 
@@ -104,6 +105,7 @@ contract StandardTokenVesting {
     token.transfer(owner, refund);
 
     emit Revoked();
+    return true;
   }
 
   /**
@@ -114,8 +116,7 @@ contract StandardTokenVesting {
     return vestedAmount(token).sub(released[token]);
   }
 
-  /**
-   * @dev Calculates the amount that has already vested.
+  /** @dev Calculates the amount that has already vested.
    * @param token Emal token which is being vested
    */
   function vestedAmount(EmalToken token) public view returns (uint256) {
