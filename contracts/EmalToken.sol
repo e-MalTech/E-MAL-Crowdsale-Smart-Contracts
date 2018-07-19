@@ -17,17 +17,17 @@ contract EmalToken is StandardToken {
 
     // 23% of initial supply
     // Tokens early investors. 13% for Presale 1. + 10% for bonuses.
-    uint256 public constant privatePresaleAmount = 23000000 * 10 ** uint256(decimals);
+    uint256 public constant privatePresaleAmount = 115000000 * 10 ** uint256(decimals);
 
     // 59% of inital supply
     // Tokens for public through crowdsale. 57% Crowdsale and 2% bounties.
-    uint256 public constant publicCrowdsaleAmount = 59000000 * 10 ** uint256(decimals);
+    uint256 public constant publicCrowdsaleAmount = 295000000 * 10 ** uint256(decimals);
 
     // 18% of inital supply.
     // Tokens for partners and advisors and project team. 18% of inital supply.
-    uint256 public constant vestingAmount = 18000000 * 10 ** uint256(decimals);
+    uint256 public constant vestingAmount = 90000000 * 10 ** uint256(decimals);
 
-    // Total initial supply of tokens to be given away initially. Rested is minted
+    // Total initial supply of tokens to be given away initially. Rested is minted. Should be 500M tokens.
     uint256 private initialSupply = privatePresaleAmount.add(publicCrowdsaleAmount.add(vestingAmount));
 
 
@@ -70,10 +70,10 @@ contract EmalToken is StandardToken {
     constructor() public {
 
         //actual constructor initialisation value
-        // startTimeForTransfers = now + 365 days;
+        startTimeForTransfers = now + 365 days;
 
         // for testing purposes
-        startTimeForTransfers = now + 0 days;
+        // startTimeForTransfers = now + 0 days;
 
         _totalSupply = initialSupply;
         owner = msg.sender;

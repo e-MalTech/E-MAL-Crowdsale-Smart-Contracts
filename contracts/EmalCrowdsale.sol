@@ -2,7 +2,6 @@ pragma solidity ^ 0.4 .24;
 
 import "./SafeMath.sol";
 
-// for mist wallet compatibility
 contract EmalToken {
     // add function prototypes of only those used here
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
@@ -29,8 +28,8 @@ contract EmalWhitelist {
 
 contract EmalCrowdsale {
 
-    using SafeMath
-    for uint256;
+    using SafeMath for uint256;
+    using SafeMath for uint;
 
     // Start and end timestamps
     uint public startTime;
@@ -81,27 +80,26 @@ contract EmalCrowdsale {
     uint256 public totalTokensSoldandAllocated;
 
     // Soft cap in EMAL tokens
-    uint256 constant public softCap = 100000 * (10 ** 18);
+    uint256 constant public softCap = 29500000 * (10 ** 18);
 
     // Hard cap in EMAL tokens
-    uint256 constant public hardCap = 59000000 * (10 ** 18);
+    uint256 constant public hardCap = 295000000 * (10 ** 18);
 
     // Switched to true once token contract is notified of when to enable token transfers
     bool private isStartTimeSetForTokenTransfers = false;
 
 
 
-
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    /**
+   /**
      * @dev Event for token purchase logging
      * @param purchaser Address that paid for the tokens
      * @param beneficiary Address that got the tokens
-     * @param value The amount that was paid (in wei)
-     * @param amount The amount of tokens that were bought
+     * @param paidAmount The amount that was paid (in wei)
+     * @param tokenCount The amount of tokens that were bought
      */
-    event TokenPurchasedUsingEther(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
+    event TokenPurchasedUsingEther(address indexed purchaser, address indexed beneficiary, uint256 paidAmount, uint256 tokenCount);
 
     /**
      * @dev Event fired when tokens are allocated to an investor account
@@ -176,24 +174,27 @@ contract EmalCrowdsale {
         emit Unpause();
     }
 
-
+    function returnUnixTimeStamp() public view returns(uint256) {
+        return now;
+    }
 
 
     /**
-     * @param _startTime Unix timestamp for the start of the token sale
-     * @param _endTime Unix timestamp for the end of the token sale
+     * _startTime Unix timestamp for the start of the token sale
+     * _endTime Unix timestamp for the end of the token sale
      * @param _wallet Ethereum address to which the invested funds are forwarded
      * @param _token Address of the token that will be rewarded for the investors
      */
-    constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
-        require(_startTime >= now);
-        require(_endTime >= _startTime);
+    // constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
+    constructor(address _wallet, address _token, address _list) public {
+        // require(_startTime >= now);
+        // require(_endTime >= _startTime);
         require(_wallet != address(0));
         require(_token != address(0));
         require(_list != address(0));
 
-        startTime = _startTime;
-        endTime = _endTime;
+        startTime = now;
+        endTime = startTime + 4 hours;
         wallet = _wallet;
         owner = msg.sender;
         token = EmalToken(_token);
@@ -209,15 +210,14 @@ contract EmalCrowdsale {
     *  owner, return ether to allow refunds.
     */
     function() external payable {
-        if (list.isWhitelisted(msg.sender)) {
-            if (msg.sender == wallet) {
-                require(hasEnded() && totalTokensSoldandAllocated < softCap);
-            } else {
-                buyTokensUsingEther(msg.sender);
-            }
+        if (msg.sender == wallet) {
+            require(hasEnded() && totalTokensSoldandAllocated < softCap);
         } else {
-            /* Do not accept ETH */
-            revert();
+            if (list.isWhitelisted(msg.sender)) {
+                buyTokensUsingEther(msg.sender);
+            } else {
+                revert();
+            }
         }
     }
 
@@ -298,7 +298,7 @@ contract EmalCrowdsale {
      * @dev there exists a case where rate cant be set to 0, which is fine.
      * @return The current token rate
      */
-    function getRate() internal constant returns(uint256) {
+    function getRate() public constant returns(uint256) {
         if (overridenRateValue != 0) {
             return overridenRateValue;
 
@@ -336,11 +336,12 @@ contract EmalCrowdsale {
         return now > endTime || totalTokensSoldandAllocated >= hardCap;
     }
 
-    function crowdsaleStatus() public view returns(bool){
-        if (hasEnded() || paused){
+    function isCrowdsaleActive() public view returns(bool) {
+        if (!paused && now>startTime && now<endTime && totalTokensSoldandAllocated<=hardCap){
+            return true;
+        } else {
             return false;
         }
-        return true;
     }
 
     /**
@@ -413,7 +414,7 @@ contract EmalCrowdsale {
         emit TokensAllocated(beneficiary, tokens);
 
         /* Update token contract. */
-        _postValidationUpdateTokenContract();
+        // _postValidationUpdateTokenContract();
         return true;
     }
 
@@ -438,6 +439,7 @@ contract EmalCrowdsale {
 
         allocatedTokens[beneficiary] = allocatedTokens[beneficiary].sub(tokenCount);
         totalTokensSoldandAllocated = totalTokensSoldandAllocated.sub(tokenCount);
+        totalTokensAllocated = totalTokensAllocated.sub(tokenCount);
         return true;
     }
 

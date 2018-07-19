@@ -1,4 +1,4 @@
-pragma solidity ^ 0.4 .24;
+pragma solidity ^ 0.4.24;
 
 import "./SafeMath.sol";
 
@@ -26,8 +26,8 @@ contract EmalWhitelist {
 
 contract EmalPresale {
 
-    using SafeMath
-    for uint256;
+    using SafeMath for uint256;
+    using SafeMath for uint;
 
     // Start and end timestamps
     uint public startTime;
@@ -54,14 +54,15 @@ contract EmalPresale {
      */
     uint256 public overridenRateValue = 0;
 
-    // Amount of tokens that were sold to ether investors plus tokens allocated to investors by server for fiat and btc investments.
-    uint256 public totalTokensSoldandAllocated;
-
     // Investor contributions made in ether only
-    mapping(address => uint256) etherInvestments;
+    mapping(address => uint256) public etherInvestments;
 
-    // Total ether invested during the crowdsale
+    mapping(address => uint256) public tokensSoldForEther;
+
     uint256 public totalEtherRaisedByPresale = 0;
+
+    uint256 public totalTokensSoldByEtherInvestments = 0;
+
 
     // Count of allocated tokens (not issued only allocated) for each investor or bounty user
     mapping(address => uint256) public allocatedTokens;
@@ -69,8 +70,15 @@ contract EmalPresale {
     // Count of allocated tokens issued to each investor and bounty user.
     mapping(address => uint256) public amountOfAllocatedTokensGivenOut;
 
+    uint256 public totalTokensAllocated = 0;
+
+
+    // Amount of tokens that were sold to ether investors plus tokens allocated to investors by server for fiat and btc investments.
+    uint256 public totalTokensSoldandAllocated = 0;
+
     // Hard cap in EMAL tokens
-    uint256 constant public hardCap = 100000000 * (10 ** 18);
+    uint256 constant public hardCap = 115000000 * (10 ** 18);
+
 
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -79,10 +87,10 @@ contract EmalPresale {
      * @dev Event for token purchase logging
      * @param purchaser Address that paid for the tokens
      * @param beneficiary Address that got the tokens
-     * @param value The amount that was paid (in wei)
-     * @param amount The amount of tokens that were bought
+     * @param paidAmount The amount that was paid (in wei)
+     * @param tokenCount The amount of tokens that were bought
      */
-    event TokenPurchasedUsingEther(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
+    event TokenPurchasedUsingEther(address indexed purchaser, address indexed beneficiary, uint256 paidAmount, uint256 tokenCount);
 
     /**
      * @dev Event fired when tokens are allocated to an investor account
@@ -150,22 +158,27 @@ contract EmalPresale {
         emit Unpause();
     }
 
+    function returnUnixTimeStamp() public view returns(uint256) {
+        return now;
+    }
 
 
     /**
-     * @param _startTime Unix timestamp for the start of the token sale
-     * @param _endTime Unix timestamp for the end of the token sale
+     * _startTime Unix timestamp for the start of the token sale
+     * _endTime Unix timestamp for the end of the token sale
      * @param _wallet Ethereum address to which the invested funds are forwarded
      * @param _token Address of the token that will be rewarded for the investors
      */
-    constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
-        require(_startTime >= now);
-        require(_endTime >= _startTime);
+    // constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
+    constructor(address _wallet, address _token, address _list) public {
+        // require(_startTime >= now);
+        // require(_endTime >= _startTime);
         require(_wallet != address(0));
         require(_token != address(0));
+        require(_list != address(0));
 
-        startTime = _startTime;
-        endTime = _endTime;
+        startTime = now;
+        endTime = startTime + 4 hours;
         wallet = _wallet;
         owner = msg.sender;
         token = EmalToken(_token);
@@ -215,9 +228,11 @@ contract EmalPresale {
         }
 
         // update state and balances
-        totalTokensSoldandAllocated = totalTokensSoldandAllocated.add(tokens);
         etherInvestments[beneficiary] = etherInvestments[beneficiary].add(weiAmount);
+        tokensSoldForEther[beneficiary] = tokensSoldForEther[beneficiary].add(tokens);
+        totalTokensSoldByEtherInvestments = totalTokensSoldByEtherInvestments.add(tokens);
         totalEtherRaisedByPresale = totalEtherRaisedByPresale.add(weiAmount);
+        totalTokensSoldandAllocated = totalTokensSoldandAllocated.add(tokens);
 
 
         // assert implies it should never fail
@@ -242,8 +257,8 @@ contract EmalPresale {
         */
     }
 
-    function setRate(uint256 _value) onlyOwner public {
-        overridenRateValue = _value;
+    function setRate(uint256 value) onlyOwner public {
+        overridenRateValue = value;
     }
 
     /**
@@ -251,8 +266,8 @@ contract EmalPresale {
      * @dev there exists a case where rate cant be set to 0, which is fine.
      * @return The current token rate
      */
-    function getRate() internal constant returns(uint256) {
-        if ( overridenRateValue!=0 ) {
+    function getRate() public constant returns(uint256) {
+        if ( overridenRateValue !=0 ) {
             return overridenRateValue;
 
         } else {
@@ -287,6 +302,14 @@ contract EmalPresale {
      */
     function hasEnded() public constant returns(bool) {
         return now > endTime || totalTokensSoldandAllocated >= hardCap;
+    }
+
+    function isPresaleActive() public view returns(bool) {
+        if (!paused && now>startTime && now<endTime && totalTokensSoldandAllocated<=hardCap){
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -338,6 +361,7 @@ contract EmalPresale {
         /* Update state and balances */
         allocatedTokens[beneficiary] = allocatedTokens[beneficiary].add(tokenCount);
         totalTokensSoldandAllocated = totalTokensSoldandAllocated.add(tokenCount);
+        totalTokensAllocated = totalTokensAllocated.add(tokenCount);
         emit TokensAllocated(beneficiary, tokens);
 
         /* Update token contract. */
@@ -366,6 +390,7 @@ contract EmalPresale {
 
         allocatedTokens[beneficiary] = allocatedTokens[beneficiary].sub(tokenCount);
         totalTokensSoldandAllocated = totalTokensSoldandAllocated.sub(tokenCount);
+        totalTokensAllocated = totalTokensAllocated.sub(tokenCount);
         return true;
     }
 
@@ -420,9 +445,4 @@ contract EmalPresale {
         return true;
     }
 
-    /* @dev Set the target token */
-    function setToken(EmalToken token_addr) onlyOwner public returns (bool success){
-        token = token_addr;
-        return true;
-    }
 }

@@ -1,6 +1,6 @@
-pragma solidity ^ 0.4.14;
+pragma solidity ^0.4.24;
 
-import "./Ownable.sol";
+import './Ownable.sol';
 
 /** @notice This contract provides support for whitelisting addresses.
  * only whitelisted addresses are allowed to send ether and buy tokens
@@ -12,7 +12,7 @@ import "./Ownable.sol";
  */
 contract EmalWhitelist is Ownable {
 
-    mapping(address => bool) public whitelist;
+    mapping(address => bool) whitelist;
 
     event AddToWhitelist(address investorAddr);
     event RemoveFromWhitelist(address investorAddr);
@@ -25,6 +25,10 @@ contract EmalWhitelist is Ownable {
         _;
     }
 
+    constructor() public {
+        owner = msg.sender;
+    }
+
     /** @dev Returns if an address is whitelisted or not
      */
     function isWhitelisted(address investorAddr) public view returns(bool whitelisted) {
@@ -33,11 +37,11 @@ contract EmalWhitelist is Ownable {
 
     /**
      * @dev Adds an investor to whitelist
-     * @param _addr The address to user to be added to the whitelist, signifies that the user completed KYC requirements.
+     * @param investorAddr The address to user to be added to the whitelist, signifies that the user completed KYC requirements.
      */
-    function addToWhitelist(address _addr) public onlyOwner returns(bool success) {
-        require(_addr!= address(0));
-        whitelist[_addr] = true;
+    function addToWhitelist(address investorAddr) public onlyOwner returns(bool success) {
+        require(investorAddr!= address(0));
+        whitelist[investorAddr] = true;
         return true;
     }
 
