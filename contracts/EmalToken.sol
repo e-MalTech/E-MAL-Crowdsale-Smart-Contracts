@@ -68,8 +68,12 @@ contract EmalToken is StandardToken {
 
 
     constructor() public {
+
         //actual constructor initialisation value
-        startTimeForTransfers = now + 365 days;
+        startTimeForTransfers = now + 5 minutes;
+
+        // for testing purposes
+        // startTimeForTransfers = now + 0 days;
 
         _totalSupply = initialSupply;
         owner = msg.sender;

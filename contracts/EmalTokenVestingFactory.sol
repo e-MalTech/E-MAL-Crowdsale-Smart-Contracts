@@ -32,8 +32,9 @@ contract EmalTokenVestingFactory is Ownable {
      * for founders, advisors and developers. after creation transfer Emal tokens
      * to those addresses and vesting vaults will be initialised.
      */
-    function create(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration, bool _revocable, uint256 noOfTokens) onlyOwner public returns(StandardTokenVesting) {
-        StandardTokenVesting vesting = new StandardTokenVesting(_beneficiary, _start, _cliff , _duration, _revocable);
+    // function create(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration, bool _revocable uint256 noOfTokens) onlyOwner public returns(StandardTokenVesting) {
+    function create(address _beneficiary, uint256 noOfTokens) public onlyOwner  returns(StandardTokenVesting) {
+        StandardTokenVesting vesting = new StandardTokenVesting(_beneficiary, now , 120 , 600, true);
 
         vesting.transferOwnership(msg.sender);
         vestingContractAddresses[_beneficiary] = vesting;
@@ -51,23 +52,28 @@ contract EmalTokenVestingFactory is Ownable {
     }
 
     function releasableAmount(address _beneficiary) view public returns(uint256) {
-        require(vestingContractAddresses[_beneficiary] != address(0));
+        require(getVestingContractAddress( _beneficiary) != address(0));
+        //StandardTokenVesting vesting = StandardTokenVesting(vestingContractAddresses[_beneficiary]);
         return vestingContractAddresses[_beneficiary].releasableAmount(token);
-    }
-
-    function vestedAmount(address _beneficiary) view public returns(uint256) {
-        require(vestingContractAddresses[_beneficiary] != address(0));
-        return vestingContractAddresses[_beneficiary].vestedAmount(token);
-    }
-
-    function release(address _beneficiary) public returns(bool) {
-        require(vestingContractAddresses[_beneficiary] != address(0));
-
-        return vestingContractAddresses[_beneficiary].release(token);
     }
 
     function returnUnixTimeStamp() public view returns(uint256) {
         return now;
     }
+
+    function vestedAmount(address _beneficiary) view public returns(uint256) {
+        require(getVestingContractAddress(_beneficiary) != address(0));
+        //StandardTokenVesting vesting = StandardTokenVesting(vestingContractAddresses[_beneficiary]);
+
+        return vestingContractAddresses[_beneficiary].vestedAmount(token);
+    }
+
+    function release(address _beneficiary) public returns(bool) {
+        require(getVestingContractAddress(_beneficiary) != address(0));
+        //StandardTokenVesting vesting = StandardTokenVesting(vestingContractAddresses[_beneficiary]);
+
+        return vestingContractAddresses[_beneficiary].release(token);
+    }
+
 
 }

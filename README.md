@@ -1,4 +1,4 @@
-# E-MAL SMARTCONTRACT v2.0
+# [Testing Branch] E-MAL SMARTCONTRACT v2.0
 
 
 - Existing smart contracts: https://github.com/teche-mal/e-MalToken

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^ 0.4.24;
 
 import "./SafeMath.sol";
 
@@ -23,6 +23,7 @@ contract EmalWhitelist {
  * eMAl backend server will calculate the number of tokens to be allocated and then directly call the allocate
  * tokens API to allocate tokens to the investor.
  */
+
 contract EmalPresale {
 
     using SafeMath for uint256;
@@ -163,25 +164,30 @@ contract EmalPresale {
 
 
     /**
-     * @param _startTime Unix timestamp for the start of the token sale
-     * @param _endTime Unix timestamp for the end of the token sale
+     * _startTime Unix timestamp for the start of the token sale
+     * _endTime Unix timestamp for the end of the token sale
      * @param _wallet Ethereum address to which the invested funds are forwarded
      * @param _token Address of the token that will be rewarded for the investors
      */
-     constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
-        require(_startTime >= now);
-        require(_endTime >= _startTime);
+    // constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
+    constructor(address _wallet, address _token, address _list) public {
+        // require(_startTime >= now);
+        // require(_endTime >= _startTime);
         require(_wallet != address(0));
         require(_token != address(0));
         require(_list != address(0));
 
-        startTime = _startTime;
-        endTime = _endTime;
+        startTime = now;
+        endTime = startTime + 10 days;
         wallet = _wallet;
         owner = msg.sender;
         token = EmalToken(_token);
         list = EmalWhitelist(_list);
 
+        // to allow refunds, ie: ether can be sent by _wallet
+        // list.addToWhitelist(wallet);
+        // add owner also to whitelist
+        // list.addToWhitelist(msg.sender);
     }
 
     /**
