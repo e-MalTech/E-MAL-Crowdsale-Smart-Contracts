@@ -34,7 +34,7 @@ contract EmalTokenVestingFactory is Ownable {
      */
     // function create(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration, bool _revocable uint256 noOfTokens) onlyOwner public returns(StandardTokenVesting) {
     function create(address _beneficiary, uint256 noOfTokens) public onlyOwner  returns(StandardTokenVesting) {
-        StandardTokenVesting vesting = new StandardTokenVesting(_beneficiary, now , 120 , 600, true);
+        StandardTokenVesting vesting = new StandardTokenVesting(_beneficiary, now , 300 , 86400, true);
 
         vesting.transferOwnership(msg.sender);
         vestingContractAddresses[_beneficiary] = vesting;
