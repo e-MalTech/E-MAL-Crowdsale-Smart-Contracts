@@ -4,7 +4,7 @@ pragma solidity ^0.4.24;
 
 import "./EmalToken.sol";
 import "./SafeMath.sol";
-
+import "./Ownable.sol";
 
 /**
  * @title StandardTokenVesting
@@ -12,12 +12,11 @@ import "./SafeMath.sol";
  * typical vesting scheme, with a cliff and vesting period. Optionally revocable by the
  * owner.
  */
-contract StandardTokenVesting {
+contract StandardTokenVesting is Ownable {
   using SafeMath for uint256;
 
   event Released(uint256 amount);
   event Revoked();
-  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
   // beneficiary of tokens after they are released
   address public beneficiary;
@@ -30,21 +29,6 @@ contract StandardTokenVesting {
 
   mapping (address => uint256) public released;
   mapping (address => bool) public revoked;
-
-  // Owner of the token
-  address public owner;
-
-  modifier onlyOwner() {
-      require(msg.sender == owner);
-      _;
-  }
-  function transferOwnership(address newOwner) public onlyOwner {
-      require(newOwner != address(0));
-      emit OwnershipTransferred(owner, newOwner);
-      owner = newOwner;
-  }
-
-
 
 
   /**
@@ -75,14 +59,12 @@ contract StandardTokenVesting {
    */
   function release(EmalToken token) public returns (bool){
     uint256 unreleased = releasableAmount(token);
-
     require(unreleased > 0);
 
     released[token] = released[token].add(unreleased);
-
     token.transfer(beneficiary, unreleased);
-
     emit Released(unreleased);
+
     return true;
   }
 
@@ -96,15 +78,12 @@ contract StandardTokenVesting {
     require(!revoked[token]);
 
     uint256 balance = token.balanceOf(this);
-
     uint256 unreleased = releasableAmount(token);
     uint256 refund = balance.sub(unreleased);
-
     revoked[token] = true;
-
     token.transfer(owner, refund);
-
     emit Revoked();
+    
     return true;
   }
 
@@ -112,14 +91,14 @@ contract StandardTokenVesting {
    * @dev Calculates the amount that has already vested but hasn't been released yet.
    * @param token ERC20 token which is being vested
    */
-  function releasableAmount(EmalToken token) public view returns (uint256) {
+  function releasableAmount(EmalToken token) view public returns (uint256) {
     return vestedAmount(token).sub(released[token]);
   }
 
   /** @dev Calculates the amount that has already vested.
    * @param token Emal token which is being vested
    */
-  function vestedAmount(EmalToken token) public view returns (uint256) {
+  function vestedAmount(EmalToken token) view public returns (uint256) {
     uint256 currentBalance = token.balanceOf(this);
     uint256 totalBalance = currentBalance.add(released[token]);
 

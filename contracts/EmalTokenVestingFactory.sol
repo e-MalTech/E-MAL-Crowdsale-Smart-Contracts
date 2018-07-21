@@ -2,15 +2,7 @@
 pragma solidity ^ 0.4.24;
 
 import './StandardTokenVesting.sol';
-
-
-// // for mist wallet compatibility
-// contract EmalToken {
-//     // add function prototypes of only those used here
-//     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
-//     function setStartTimeForTokenTransfers(uint _startTime) external;
-// }
-
+import './Ownable.sol';
 
 
 
@@ -21,29 +13,14 @@ import './StandardTokenVesting.sol';
  * that ensures the creation of new token vesting contracts.
  */
 
-contract EmalTokenVestingFactory {
+contract EmalTokenVestingFactory is Ownable {
 
     mapping(address => StandardTokenVesting) vestingContractAddresses;
 
     // The token being sold
     EmalToken public token;
 
-    // Owner of the token
-    address public owner;
-
-    modifier onlyOwner() {
-        require(msg.sender == owner);
-        _;
-    }
-
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0));
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-
     event CreatedStandardVestingContract(StandardTokenVesting vesting);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     constructor(address _token) public {
         require(_token != address(0));
@@ -55,9 +32,10 @@ contract EmalTokenVestingFactory {
      * for founders, advisors and developers. after creation transfer Emal tokens
      * to those addresses and vesting vaults will be initialised.
      */
-    function create(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration, uint256 noOfTokens) onlyOwner public returns(StandardTokenVesting) {
-        StandardTokenVesting vesting = new StandardTokenVesting(_beneficiary, _start, _cliff, _duration, true);
+    function create(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration, bool _revocable, uint256 noOfTokens) onlyOwner public returns(StandardTokenVesting) {
+        StandardTokenVesting vesting = new StandardTokenVesting(_beneficiary, _start, _cliff , _duration, _revocable);
 
+        vesting.transferOwnership(msg.sender);
         vestingContractAddresses[_beneficiary] = vesting;
         emit CreatedStandardVestingContract(vesting);
         assert(token.transferFrom(owner, vesting, noOfTokens));
@@ -72,26 +50,24 @@ contract EmalTokenVestingFactory {
         return vestingContractAddresses[_beneficiary];
     }
 
-    function releasableAmount(address _beneficiary) public view returns(uint256) {
-        require(getVestingContractAddress( _beneficiary) != address(0));
-        StandardTokenVesting vesting = StandardTokenVesting(getVestingContractAddress(_beneficiary));
-
-        return vesting.releasableAmount(token);
+    function releasableAmount(address _beneficiary) view public returns(uint256) {
+        require(vestingContractAddresses[_beneficiary] != address(0));
+        return vestingContractAddresses[_beneficiary].releasableAmount(token);
     }
 
-    function vestedAmount(address _beneficiary) public view returns(uint256) {
-        require(getVestingContractAddress(_beneficiary) != address(0));
-        StandardTokenVesting vesting = StandardTokenVesting(getVestingContractAddress(_beneficiary));
-
-        return vesting.vestedAmount(token);
+    function vestedAmount(address _beneficiary) view public returns(uint256) {
+        require(vestingContractAddresses[_beneficiary] != address(0));
+        return vestingContractAddresses[_beneficiary].vestedAmount(token);
     }
 
     function release(address _beneficiary) public returns(bool) {
-        require(getVestingContractAddress(_beneficiary) != address(0));
-        StandardTokenVesting vesting = StandardTokenVesting(getVestingContractAddress(_beneficiary));
+        require(vestingContractAddresses[_beneficiary] != address(0));
 
-        return vesting.release(token);
+        return vestingContractAddresses[_beneficiary].release(token);
     }
 
+    function returnUnixTimeStamp() public view returns(uint256) {
+        return now;
+    }
 
 }

@@ -1,5 +1,7 @@
 build/
 .tmp/
+contracts/TokenTestingSetup.md
+contracts/SaleFlow.md
 
 // random node files
 .node*

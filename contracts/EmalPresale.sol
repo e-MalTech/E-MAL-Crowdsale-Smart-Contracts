@@ -1,4 +1,4 @@
-pragma solidity ^ 0.4.24;
+pragma solidity ^0.4.24;
 
 import "./SafeMath.sol";
 
@@ -23,7 +23,6 @@ contract EmalWhitelist {
  * eMAl backend server will calculate the number of tokens to be allocated and then directly call the allocate
  * tokens API to allocate tokens to the investor.
  */
-
 contract EmalPresale {
 
     using SafeMath for uint256;
@@ -164,30 +163,25 @@ contract EmalPresale {
 
 
     /**
-     * _startTime Unix timestamp for the start of the token sale
-     * _endTime Unix timestamp for the end of the token sale
+     * @param _startTime Unix timestamp for the start of the token sale
+     * @param _endTime Unix timestamp for the end of the token sale
      * @param _wallet Ethereum address to which the invested funds are forwarded
      * @param _token Address of the token that will be rewarded for the investors
      */
-    // constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
-    constructor(address _wallet, address _token, address _list) public {
-        // require(_startTime >= now);
-        // require(_endTime >= _startTime);
+     constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
+        require(_startTime >= now);
+        require(_endTime >= _startTime);
         require(_wallet != address(0));
         require(_token != address(0));
         require(_list != address(0));
 
-        startTime = now;
-        endTime = startTime + 4 hours;
+        startTime = _startTime;
+        endTime = _endTime;
         wallet = _wallet;
         owner = msg.sender;
         token = EmalToken(_token);
         list = EmalWhitelist(_list);
 
-        // to allow refunds, ie: ether can be sent by _wallet
-        // list.addToWhitelist(wallet);
-        // add owner also to whitelist
-        // list.addToWhitelist(msg.sender);
     }
 
     /**
@@ -318,8 +312,15 @@ contract EmalPresale {
      * @return An uint256 representing the amount owned by the passed address.
      */
     function balanceOfEtherInvestor(address _owner) external constant returns(uint256 balance) {
+        require(_owner != address(0));
         return etherInvestments[_owner];
     }
+
+    function getTokensSoldToEtherInvestor(address _owner) public constant returns(uint256 balance) {
+        require(_owner != address(0));
+        return tokensSoldForEther[_owner];
+    }
+
 
     /**
      * @dev Allows the current owner to transfer control of the contract to a newOwner.
@@ -399,6 +400,7 @@ contract EmalPresale {
      * @param beneficiary address of the investor or the bounty user
      */
     function getAllocatedTokens(address beneficiary) public view returns(uint256 tokenCount) {
+        require(beneficiary != address(0));
         return allocatedTokens[beneficiary];
     }
 
@@ -443,6 +445,13 @@ contract EmalPresale {
 
         emit IssuedAllocatedTokens(beneficiary, tokensToSend);
         return true;
+    }
+
+    function getSoldandAllocatedTokens(address _addr) public view returns (uint256) {
+        require(_addr != address(0));
+
+        uint256 totalTokenCount = getAllocatedTokens(_addr).add(getTokensSoldToEtherInvestor(_addr));
+        return totalTokenCount;
     }
 
 }
