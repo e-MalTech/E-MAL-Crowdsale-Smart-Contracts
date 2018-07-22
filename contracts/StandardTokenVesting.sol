@@ -59,12 +59,14 @@ contract StandardTokenVesting is Ownable {
    */
   function release(EmalToken token) public returns (bool){
     uint256 unreleased = releasableAmount(token);
+
     require(unreleased > 0);
 
     released[token] = released[token].add(unreleased);
-    token.transfer(beneficiary, unreleased);
-    emit Released(unreleased);
 
+    token.transfer(beneficiary, unreleased);
+
+    emit Released(unreleased);
     return true;
   }
 
@@ -78,12 +80,15 @@ contract StandardTokenVesting is Ownable {
     require(!revoked[token]);
 
     uint256 balance = token.balanceOf(this);
+
     uint256 unreleased = releasableAmount(token);
     uint256 refund = balance.sub(unreleased);
+
     revoked[token] = true;
+
     token.transfer(owner, refund);
+
     emit Revoked();
-    
     return true;
   }
 

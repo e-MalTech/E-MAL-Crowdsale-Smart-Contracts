@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^ 0.4.24;
 
 import "./SafeMath.sol";
 
@@ -23,6 +23,7 @@ contract EmalWhitelist {
  * eMAl backend server will calculate the number of tokens to be allocated and then directly call the allocate
  * tokens API to allocate tokens to the investor.
  */
+
 contract EmalPresale {
 
     using SafeMath for uint256;
@@ -76,7 +77,7 @@ contract EmalPresale {
     uint256 public totalTokensSoldandAllocated = 0;
 
     // Hard cap in EMAL tokens
-    uint256 constant public hardCap = 115000000 * (10 ** 18);
+    uint256 constant public hardCap = 120000000 * (10 ** 18);
 
 
 
@@ -162,13 +163,45 @@ contract EmalPresale {
     }
 
 
+    uint256 priceOfEthInUSD = 450;
+    uint256 bonusPercent1 = 35;
+    uint256 priceOfEMLTokenInUSDPenny = 60;
+
+    function setExchangeRate(uint256 overridenValue) onlyOwner public returns(bool) {
+        require( overridenValue > 0 );
+
+        priceOfEthInUSD = overridenValue;
+        return true;
+    }
+
+    function getExchangeRate() public view returns(uint256){
+        uint256 _priceOfEthInUSD = priceOfEthInUSD;
+
+        return _priceOfEthInUSD;
+    }
+
+    /**
+     * @dev public function that is used to determine the current rate for token / ETH conversion
+     * @dev there exists a case where rate cant be set to 0, which is fine.
+     * @return The current token rate
+     */
+    function getRate() public view returns(uint256) {
+        require(priceOfEMLTokenInUSDPenny !=0 );
+        require(priceOfEthInUSD !=0 );
+
+        uint256 rate = priceOfEthInUSD.mul(100).div(priceOfEMLTokenInUSDPenny);
+        return rate.mul(bonusPercent1.add(100)).div(100);
+    }
+
+
+
     /**
      * @param _startTime Unix timestamp for the start of the token sale
-     * @param _endTime Unix timestamp for the end of the token sale
+     * #param _endTime Unix timestamp for the end of the token sale
      * @param _wallet Ethereum address to which the invested funds are forwarded
      * @param _token Address of the token that will be rewarded for the investors
      */
-     constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
+    constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
         require(_startTime >= now);
         require(_endTime >= _startTime);
         require(_wallet != address(0));
@@ -208,16 +241,16 @@ contract EmalPresale {
         uint256 weiAmount = msg.value;
         uint256 returnToSender = 0;
 
-        // Retrieve the current token rate
-        uint256 rate = getRate();
+        // final rate after including rate value and bonus amount.
+        uint256 finalConversionRate = getRate();
 
         // Calculate token amount to be transferred
-        uint256 tokens = weiAmount.mul(rate);
+        uint256 tokens = weiAmount.mul(finalConversionRate);
 
         // Distribute only the remaining tokens if final contribution exceeds hard cap
         if (totalTokensSoldandAllocated.add(tokens) > hardCap) {
             tokens = hardCap.sub(totalTokensSoldandAllocated);
-            weiAmount = tokens.div(rate);
+            weiAmount = tokens.div(finalConversionRate);
             returnToSender = msg.value.sub(weiAmount);
         }
 
@@ -251,35 +284,6 @@ contract EmalPresale {
         */
     }
 
-    function setRate(uint256 value) onlyOwner public {
-        overridenRateValue = value;
-    }
-
-    /**
-     * @dev Internal function that is used to determine the current rate for token / ETH conversion
-     * @dev there exists a case where rate cant be set to 0, which is fine.
-     * @return The current token rate
-     */
-    function getRate() public constant returns(uint256) {
-        if ( overridenRateValue !=0 ) {
-            return overridenRateValue;
-
-        } else {
-            if (now < (startTime + 1 weeks)) {
-                return 6000;
-            }
-
-            if (now < (startTime + 2 weeks)) {
-                return 5500;
-            }
-
-            if (now < (startTime + 3 weeks)) {
-                return 5250;
-            }
-            return 5000;
-        }
-    }
-
     /**
      * @dev Internal function that is used to check if the incoming purchase should be accepted.
      * @return True if the transaction can buy tokens
@@ -287,8 +291,9 @@ contract EmalPresale {
     function validPurchase() internal constant returns(bool) {
         bool withinPeriod = now >= startTime && now <= endTime;
         bool nonZeroPurchase = msg.value != 0;
+        bool minimumPurchase = msg.value >= 1000000000000000000;
         bool hardCapNotReached = totalTokensSoldandAllocated < hardCap;
-        return withinPeriod && nonZeroPurchase && hardCapNotReached;
+        return withinPeriod && nonZeroPurchase && hardCapNotReached && minimumPurchase;
     }
 
     /**
@@ -345,7 +350,7 @@ contract EmalPresale {
      * @param beneficiary The address of the investor or the bounty user
      * @param tokenCount The number of tokens to be allocated to this address
      */
-    function allocateTokens(address beneficiary, uint256 tokenCount) onlyOwner whenNotPaused public returns(bool success) {
+    function allocateTokens(address beneficiary, uint256 tokenCount) onlyOwner public returns(bool success) {
         require(beneficiary != address(0));
         require(validAllocation(tokenCount));
 

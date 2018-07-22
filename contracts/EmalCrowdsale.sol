@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^ 0.4 .24;
 
 import "./SafeMath.sol";
 
@@ -80,10 +80,10 @@ contract EmalCrowdsale {
     uint256 public totalTokensSoldandAllocated;
 
     // Soft cap in EMAL tokens
-    uint256 constant public softCap = 29500000 * (10 ** 18);
+    uint256 constant public softCap = 3000000 * (10 ** 18);
 
     // Hard cap in EMAL tokens
-    uint256 constant public hardCap = 295000000 * (10 ** 18);
+    uint256 constant public hardCap = 300000000 * (10 ** 18);
 
     // Switched to true once token contract is notified of when to enable token transfers
     bool private isStartTimeSetForTokenTransfers = false;
@@ -179,13 +179,56 @@ contract EmalCrowdsale {
     }
 
 
+
+    uint256 priceOfEthInUSD = 450;
+    uint256 bonusPercent1 = 25;
+    uint256 bonusPercent2 = 15;
+    uint256 bonusPercent3 = 5;
+    uint256 priceOfEMLTokenInUSDPenny = 60;
+
+    function setExchangeRate(uint256 overridenValue) onlyOwner public returns(bool) {
+        require( overridenValue > 0 );
+
+        priceOfEthInUSD = overridenValue;
+        return true;
+    }
+
+    function getExchangeRate() public view returns(uint256){
+        uint256 _priceOfEthInUSD = priceOfEthInUSD;
+        return _priceOfEthInUSD;
+    }
+
+    /**
+     * @dev public function that is used to determine the current rate for token / ETH conversion
+     * @dev there exists a case where rate cant be set to 0, which is fine.
+     * @return The current token rate
+     */
+    function getRate() public view returns(uint256) {
+        require( priceOfEMLTokenInUSDPenny !=0 );
+        require( priceOfEthInUSD !=0 );
+
+
+        uint256 rate = getExchangeRate().mul(100).div(priceOfEMLTokenInUSDPenny);
+        if (now < (startTime + 2 weeks)) {
+            return rate.mul(bonusPercent1.add(100)).div(100);
+        }
+        if (now < (startTime + 4 weeks)) {
+            return rate.mul(bonusPercent2.add(100)).div(100);
+        }
+        if (now < (startTime + 6 weeks)) {
+            return rate.mul(bonusPercent3.add(100)).div(100);
+        }
+
+        return rate;
+    }
+
     /**
      * @param _startTime Unix timestamp for the start of the token sale
-     * @param _endTime Unix timestamp for the end of the token sale
+     * #param _endTime Unix timestamp for the end of the token sale
      * @param _wallet Ethereum address to which the invested funds are forwarded
      * @param _token Address of the token that will be rewarded for the investors
      */
-     constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
+    constructor(uint256 _startTime, uint256 _endTime, address _wallet, address _token, address _list) public {
         require(_startTime >= now);
         require(_endTime >= _startTime);
         require(_wallet != address(0));
@@ -227,16 +270,16 @@ contract EmalCrowdsale {
         uint256 weiAmount = msg.value;
         uint256 returnToSender = 0;
 
-        // Retrieve the current token rate
-        uint256 rate = getRate();
+        // final rate after including rate value and bonus amount.
+        uint256 finalConversionRate = getRate();
 
         // Calculate token amount to be transferred
-        uint256 tokens = weiAmount.mul(rate);
+        uint256 tokens = weiAmount.mul(finalConversionRate);
 
         // Distribute only the remaining tokens if final contribution exceeds hard cap
         if (totalTokensSoldandAllocated.add(tokens) > hardCap) {
             tokens = hardCap.sub(totalTokensSoldandAllocated);
-            weiAmount = tokens.div(rate);
+            weiAmount = tokens.div(finalConversionRate);
             returnToSender = msg.value.sub(weiAmount);
         }
 
@@ -284,34 +327,6 @@ contract EmalCrowdsale {
         }
     }
 
-    function setRate(uint256 _value) onlyOwner public {
-        overridenRateValue = _value;
-    }
-
-    /**
-     * @dev Internal function that is used to determine the current rate for token / ETH conversion
-     * @dev there exists a case where rate cant be set to 0, which is fine.
-     * @return The current token rate
-     */
-    function getRate() public constant returns(uint256) {
-        if (overridenRateValue != 0) {
-            return overridenRateValue;
-
-        } else {
-            if (now < (startTime + 1 weeks)) {
-                return 6000;
-            }
-
-            if (now < (startTime + 2 weeks)) {
-                return 5500;
-            }
-
-            if (now < (startTime + 3 weeks)) {
-                return 5250;
-            }
-            return 5000;
-        }
-    }
 
     /**
      * @dev Internal function that is used to check if the incoming purchase should be accepted.
@@ -320,8 +335,9 @@ contract EmalCrowdsale {
     function validPurchase() internal constant returns(bool) {
         bool withinPeriod = now >= startTime && now <= endTime;
         bool nonZeroPurchase = msg.value != 0;
+        bool minimumPurchase = msg.value >= 1000000000000000000;
         bool hardCapNotReached = totalTokensSoldandAllocated < hardCap;
-        return withinPeriod && nonZeroPurchase && hardCapNotReached;
+        return withinPeriod && nonZeroPurchase && hardCapNotReached && minimumPurchase;
     }
 
     /**
@@ -362,15 +378,14 @@ contract EmalCrowdsale {
      * @param _owner The address to query the the balance of.
      * @return An uint256 representing the amount owned by the passed address.
      */
-     function balanceOfEtherInvestor(address _owner) external constant returns(uint256 balance) {
-         require(_owner != address(0));
-         return etherInvestments[_owner];
-     }
+    function balanceOfEtherInvestor(address _owner) external constant returns(uint256 balance) {
+        return etherInvestments[_owner];
+    }
 
-     function getTokensSoldToEtherInvestor(address _owner) public constant returns(uint256 balance) {
-         require(_owner != address(0));
-         return tokensSoldForEther[_owner];
-     }
+    function getTokensSoldToEtherInvestor(address _owner) public constant returns(uint256 balance) {
+        require(_owner != address(0));
+        return tokensSoldForEther[_owner];
+    }
 
     /**
      * @dev Allows the current owner to transfer control of the contract to a newOwner.
@@ -394,7 +409,7 @@ contract EmalCrowdsale {
      * @param beneficiary The address of the investor or the bounty user
      * @param tokenCount The number of tokens to be allocated to this address
      */
-    function allocateTokens(address beneficiary, uint256 tokenCount) onlyOwner whenNotPaused public returns(bool success) {
+    function allocateTokens(address beneficiary, uint256 tokenCount) onlyOwner public returns(bool success) {
         require(beneficiary != address(0));
         require(validAllocation(tokenCount));
 
@@ -415,7 +430,7 @@ contract EmalCrowdsale {
         emit TokensAllocated(beneficiary, tokens);
 
         /* Update token contract. */
-        _postValidationUpdateTokenContract();
+        // _postValidationUpdateTokenContract();
         return true;
     }
 
@@ -448,10 +463,9 @@ contract EmalCrowdsale {
      * @dev Getter function to check the amount of allocated tokens
      * @param beneficiary address of the investor or the bounty user
      */
-     function getAllocatedTokens(address beneficiary) public view returns(uint256 tokenCount) {
-         require(beneficiary != address(0));
-         return allocatedTokens[beneficiary];
-     }
+    function getAllocatedTokens(address beneficiary) public view returns(uint256 tokenCount) {
+        return allocatedTokens[beneficiary];
+    }
 
 
     /**
