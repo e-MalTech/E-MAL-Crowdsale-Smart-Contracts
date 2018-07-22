@@ -15,20 +15,20 @@ contract EmalToken is StandardToken {
     // Total Number of tokens ever goint to be minted. 1 BILLION EML tokens.
     //uint256 private constant mintingCappedAmount = 1000000000 * 10 ** uint256(decimals);
 
-    // 23% of initial supply
-    // Tokens early investors. 13% for Presale 1. + 10% for bonuses.
-    uint256 public constant privatePresaleAmount = 115000000 * 10 ** uint256(decimals);
+    // 24% of initial supply
+    uint256 public constant privatePresaleAmount = 120000000 * 10 ** uint256(decimals);
 
-    // 59% of inital supply
-    // Tokens for public through crowdsale. 57% Crowdsale and 2% bounties.
-    uint256 public constant publicCrowdsaleAmount = 295000000 * 10 ** uint256(decimals);
+    // 60% of inital supply
+    uint256 public constant publicCrowdsaleAmount = 300000000 * 10 ** uint256(decimals);
 
-    // 18% of inital supply.
-    // Tokens for partners and advisors and project team. 18% of inital supply.
-    uint256 public constant vestingAmount = 90000000 * 10 ** uint256(decimals);
+    // 8% of inital supply.
+    uint256 public constant vestingAmount = 40000000 * 10 ** uint256(decimals);
+
+    // 8% of inital supply.
+    uint256 public constant bountyAmount = 40000000 * 10 ** uint256(decimals);
 
     // Total initial supply of tokens to be given away initially. Rested is minted. Should be 500M tokens.
-    uint256 private initialSupply = privatePresaleAmount.add(publicCrowdsaleAmount.add(vestingAmount));
+    uint256 private initialSupply = privatePresaleAmount.add(publicCrowdsaleAmount.add(vestingAmount.add(bountyAmount)));
 
 
     uint public startTimeForTransfers;
@@ -36,6 +36,7 @@ contract EmalToken is StandardToken {
     address public presaleAddress;
     address public crowdsaleAddress;
     address public vestingAddress;
+    address public bountyAddress;
 
     // Owner of the token
     address public owner;
@@ -94,6 +95,11 @@ contract EmalToken is StandardToken {
     function setVestingAddress(address _vestingAddress) external onlyOwner {
         vestingAddress = _vestingAddress;
         assert(approve(vestingAddress, vestingAmount));
+    }
+
+    function setBountyAddress(address _bountyAddress) external onlyOwner {
+        bountyAddress = _bountyAddress;
+        assert(approve(bountyAddress, bountyAmount));
     }
 
     function setStartTimeForTokenTransfers(uint _startTimeForTransfers) external {
