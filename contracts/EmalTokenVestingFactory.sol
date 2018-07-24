@@ -32,9 +32,9 @@ contract EmalTokenVestingFactory is Ownable {
      * for founders, advisors and developers. after creation transfer Emal tokens
      * to those addresses and vesting vaults will be initialised.
      */
-    // function create(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration, bool _revocable uint256 noOfTokens) onlyOwner public returns(StandardTokenVesting) {
-    function create(address _beneficiary, uint256 noOfTokens) public onlyOwner  returns(StandardTokenVesting) {
-        StandardTokenVesting vesting = new StandardTokenVesting(_beneficiary, now , 300 , 86400, true);
+    // function create(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration, bool _revocable, uint256 noOfTokens) onlyOwner public returns(StandardTokenVesting) {
+    function create(address _beneficiary, uint256 _cliff, uint256 _duration, bool _revocable, uint256 noOfTokens) public onlyOwner  returns(StandardTokenVesting) {
+        StandardTokenVesting vesting = new StandardTokenVesting(_beneficiary, now , _cliff , _duration, _revocable);
 
         vesting.transferOwnership(msg.sender);
         vestingContractAddresses[_beneficiary] = vesting;

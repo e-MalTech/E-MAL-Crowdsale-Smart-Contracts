@@ -80,10 +80,10 @@ contract EmalCrowdsale {
     uint256 public totalTokensSoldandAllocated;
 
     // Soft cap in EMAL tokens
-    uint256 constant public softCap = 29500000 * (10 ** 18);
+    uint256 constant public softCap = 3000000 * (10 ** 18);
 
     // Hard cap in EMAL tokens
-    uint256 constant public hardCap = 295000000 * (10 ** 18);
+    uint256 constant public hardCap = 300000000 * (10 ** 18);
 
     // Switched to true once token contract is notified of when to enable token transfers
     bool private isStartTimeSetForTokenTransfers = false;
@@ -183,8 +183,9 @@ contract EmalCrowdsale {
     uint256 priceOfEthInUSD = 450;
     uint256 bonusPercent1 = 25;
     uint256 bonusPercent2 = 15;
-    uint256 bonusPercent3 = 5;
+    uint256 bonusPercent3 = 0;
     uint256 priceOfEMLTokenInUSDPenny = 60;
+    uint256 overridenBonusValue = 0;
 
     function setExchangeRate(uint256 overridenValue) onlyOwner public returns(bool) {
         require( overridenValue > 0 );
@@ -198,6 +199,12 @@ contract EmalCrowdsale {
         return _priceOfEthInUSD;
     }
 
+    function setOverrideBonus(uint256 overridenValue) onlyOwner public returns(bool) {
+        require( overridenValue > 0 );
+        overridenBonusValue = overridenValue;
+        return true;
+    }
+
     /**
      * @dev public function that is used to determine the current rate for token / ETH conversion
      * @dev there exists a case where rate cant be set to 0, which is fine.
@@ -206,17 +213,20 @@ contract EmalCrowdsale {
     function getRate() public view returns(uint256) {
         require( priceOfEMLTokenInUSDPenny !=0 );
         require( priceOfEthInUSD !=0 );
+        uint256 rate;
 
-
-        uint256 rate = getExchangeRate().mul(100).div(priceOfEMLTokenInUSDPenny);
-        if (now < (startTime + 2 weeks)) {
-            return rate.mul(bonusPercent1.add(100)).div(100);
-        }
-        if (now < (startTime + 4 weeks)) {
-            return rate.mul(bonusPercent2.add(100)).div(100);
-        }
-        if (now < (startTime + 6 weeks)) {
-            return rate.mul(bonusPercent3.add(100)).div(100);
+        if(overridenBonusValue <= 0){
+            if (now < (startTime + 2 weeks)) {
+                rate = priceOfEthInUSD.mul(100).div(priceOfEMLTokenInUSDPenny).mul(bonusPercent1.add(100)).div(100);
+            }
+            if (now > (startTime + 2 weeks) && now < (startTime + 4 weeks)) {
+                rate = priceOfEthInUSD.mul(100).div(priceOfEMLTokenInUSDPenny).mul(bonusPercent2.add(100)).div(100);
+            }
+            if (now > (startTime + 4 weeks)) {
+                rate = priceOfEthInUSD.mul(100).div(priceOfEMLTokenInUSDPenny).mul(bonusPercent3.add(100)).div(100);
+            }
+        } else {
+            rate = priceOfEthInUSD.mul(100).div(priceOfEMLTokenInUSDPenny).mul(overridenBonusValue.add(100)).div(100);
         }
 
         return rate;
