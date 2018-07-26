@@ -1,9 +1,10 @@
-pragma solidity ^ 0.4.24;
+pragma solidity ^0.4.24;
 
 import "./SafeMath.sol";
 import './StandardToken.sol';
+import './Ownable.sol';
 
-contract EmalToken is StandardToken {
+contract EmalToken is StandardToken, Ownable {
 
     using SafeMath for uint;
     using SafeMath for uint256;
@@ -16,65 +17,60 @@ contract EmalToken is StandardToken {
     //uint256 private constant mintingCappedAmount = 1000000000 * 10 ** uint256(decimals);
 
     // 24% of initial supply
-    uint256 public constant privatePresaleAmount = 120000000 * 10 ** uint256(decimals);
-
+    uint256 constant presaleAmount = 120000000 * 10 ** uint256(decimals);
     // 60% of inital supply
-    uint256 public constant publicCrowdsaleAmount = 300000000 * 10 ** uint256(decimals);
-
+    uint256 constant crowdsaleAmount = 300000000 * 10 ** uint256(decimals);
     // 8% of inital supply.
-    uint256 public constant vestingAmount = 40000000 * 10 ** uint256(decimals);
-
+    uint256  constant vestingAmount = 40000000 * 10 ** uint256(decimals);
     // 8% of inital supply.
-    uint256 public constant bountyAmount = 40000000 * 10 ** uint256(decimals);
-
+    uint256 constant bountyAmount = 40000000 * 10 ** uint256(decimals);
     // Total initial supply of tokens to be given away initially. Rested is minted. Should be 500M tokens.
-    uint256 private initialSupply = privatePresaleAmount.add(publicCrowdsaleAmount.add(vestingAmount.add(bountyAmount)));
-
-
-    uint public startTimeForTransfers;
+    uint256 private initialSupply = presaleAmount.add(crowdsaleAmount.add(vestingAmount.add(bountyAmount)));
 
     address public presaleAddress;
     address public crowdsaleAddress;
     address public vestingAddress;
     address public bountyAddress;
 
-    // Owner of the token
-    address public owner;
 
+
+    /** @dev Defines the start time after which transferring of EML tokens
+      * will be allowed done so as to prevent early buyers from clearing out
+      * of their EML balance during the presale and publicsale.
+      */
+    uint public startTimeForTransfers;
+
+    /** @dev to cap the total number of tokens that will ever be newly minted
+      * owner has to stop the minting by setting this variable to true.
+      */
     bool public mintingFinished = false;
 
-    mapping (address => bool) public frozenAccount;
-
-    modifier onlyOwner() {
-        require(msg.sender == owner);
-        _;
-    }
-
+    /** @dev Miniting Essentials functions as per OpenZeppelin standards
+      */
     modifier canMint() {
       require(!mintingFinished);
       _;
     }
-
     modifier hasMintPermission() {
       require(msg.sender == owner);
       _;
     }
 
-    /* This generates a public event on the blockchain that will notify clients */
+    /** @dev to prevent malicious use of EML tokens and to comply with Anti
+      * Money laundering regulations EML tokens can be frozen.
+      */
+    mapping (address => bool) public frozenAccount;
+
+    /** @dev This generates a public event on the blockchain that will notify clients
+      */
     event FrozenFunds(address target, bool frozen);
     event Mint(address indexed to, uint256 amount);
     event MintFinished();
     event Burn(address indexed burner, uint256 value);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
 
     constructor() public {
-
-        //actual constructor initialisation value
         startTimeForTransfers = now + 5 minutes;
-
-        // for testing purposes
-        // startTimeForTransfers = now + 0 days;
 
         _totalSupply = initialSupply;
         owner = msg.sender;
@@ -82,26 +78,51 @@ contract EmalToken is StandardToken {
         emit Transfer(address(0), owner, balances[owner]);
     }
 
+    /* Do not accept ETH */
+    function() public payable {
+        revert();
+    }
+
+
+    /** @dev Basic setters and getters to allocate tokens for vesting factory, presale
+      * crowdsale and bounty this is done so that no need of actually transferring EML
+      * tokens to sale contracts and hence preventing EML tokens from the risk of being
+      * locked out in future inside the subcontracts.
+      */
     function setPresaleAddress(address _presaleAddress) external onlyOwner {
         presaleAddress = _presaleAddress;
-        assert(approve(presaleAddress, privatePresaleAmount));
+        assert(approve(presaleAddress, presaleAmount));
     }
-
     function setCrowdsaleAddress(address _crowdsaleAddress) external onlyOwner {
         crowdsaleAddress = _crowdsaleAddress;
-        assert(approve(crowdsaleAddress, publicCrowdsaleAmount));
+        assert(approve(crowdsaleAddress, crowdsaleAmount));
     }
-
     function setVestingAddress(address _vestingAddress) external onlyOwner {
         vestingAddress = _vestingAddress;
         assert(approve(vestingAddress, vestingAmount));
     }
-
     function setBountyAddress(address _bountyAddress) external onlyOwner {
         bountyAddress = _bountyAddress;
         assert(approve(bountyAddress, bountyAmount));
     }
 
+    function getPresaleAmount() public returns(uint256) {
+        return presaleAmount;
+    }
+    function getCrowdsaleAmount() public returns(uint256) {
+        return crowdsaleAmount;
+    }
+    function getVestingAmount() public returns(uint256) {
+        return vestingAmount;
+    }
+    function getBountyAmount() public returns(uint256) {
+        return bountyAmount;
+    }
+
+    /** @dev Sets the start time after which transferring of EML tokens
+      * will be allowed done so as to prevent early buyers from clearing out
+      * of their EML balance during the presale and publicsale.
+      */
     function setStartTimeForTokenTransfers(uint _startTimeForTransfers) external {
         require(msg.sender == crowdsaleAddress);
         if (_startTimeForTransfers < startTimeForTransfers) {
@@ -109,8 +130,11 @@ contract EmalToken is StandardToken {
         }
     }
 
+
+    /** @dev Transfer possible only after ICO ends and Frozen accounts
+      * wont be able to transfer funds to other any other account and viz.
+      */
     function transfer(address _to, uint _value) public returns(bool) {
-        // Only possible after ICO ends
         require(now >= startTimeForTransfers);
         require(!frozenAccount[msg.sender]);
         require(!frozenAccount[_to]);
@@ -118,15 +142,16 @@ contract EmalToken is StandardToken {
         return super.transfer(_to, _value);
     }
 
+    /** @dev Only owner's tokens can be transferred before Crowdsale ends.
+      * beacuse the inital supply of EML is allocated to owners acc and later
+      * distributed to various subcontracts.
+      */
     function transferFrom(address _from, address _to, uint _value) public returns(bool) {
-        require(!frozenAccount[msg.sender]);
+        require(!frozenAccount[_from]);
         require(!frozenAccount[_to]);
-
-        // Only owner's tokens can be transferred before ICO ends
         if (now < startTimeForTransfers) {
             require(_from == owner);
         }
-
         return super.transferFrom(_from, _to, _value);
     }
 
@@ -140,12 +165,11 @@ contract EmalToken is StandardToken {
     }
 
 
-    /**
-     * @dev Function to mint tokens
-     * @param _to The address that will receive the minted tokens.
-     * @param _amount The amount of tokens to mint.
-     * @return A boolean that indicates if the operation was successful.
-     */
+    /** @dev Function to mint tokens
+      * @param _to The address that will receive the minted tokens.
+      * @param _amount The amount of tokens to mint.
+      * @return A boolean that indicates if the operation was successful.
+      */
     function mint(address _to, uint256 _amount) hasMintPermission canMint public returns (bool) {
       _totalSupply = _totalSupply.add(_amount);
       balances[_to] = balances[_to].add(_amount);
@@ -154,8 +178,7 @@ contract EmalToken is StandardToken {
       return true;
     }
 
-   /**
-     * @dev Function to stop minting new tokens.
+   /** @dev Function to stop minting new tokens.
      * @return True if the operation was successful.
      */
     function finishMinting() onlyOwner canMint public returns (bool) {
@@ -164,8 +187,7 @@ contract EmalToken is StandardToken {
       return true;
     }
 
-    /**
-      * @dev Burns a specific amount of tokens.
+    /** @dev Burns a specific amount of tokens.
       * @param _value The amount of token to be burned.
       */
      function burn(uint256 _value) public {
@@ -182,15 +204,4 @@ contract EmalToken is StandardToken {
        emit Burn(_who, _value);
        emit Transfer(_who, address(0), _value);
      }
-
-    function transferOwnership(address newOwner) public onlyOwner {
-      require(newOwner != address(0));
-      emit OwnershipTransferred(owner, newOwner);
-      owner = newOwner;
-    }
-
-    /* Do not accept ETH */
-    function() public payable {
-        revert();
-    }
 }
