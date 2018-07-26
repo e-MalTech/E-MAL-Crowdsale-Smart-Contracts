@@ -1,17 +1,13 @@
-/* solium-disable security/no-block-members */
-
 pragma solidity ^0.4.24;
 
 import "./EmalToken.sol";
 import "./SafeMath.sol";
 import "./Ownable.sol";
 
-/**
- * @title StandardTokenVesting
- * @dev A token holder contract that can release its token balance gradually like a
- * typical vesting scheme, with a cliff and vesting period. Optionally revocable by the
- * owner.
- */
+/** @title StandardTokenVesting
+  * @dev A token holder contract that can release its token balance gradually like a
+  * typical vesting scheme, with a cliff and vesting period. Optionally revocable by the owner.
+  */
 contract StandardTokenVesting is Ownable {
   using SafeMath for uint256;
 
@@ -31,8 +27,7 @@ contract StandardTokenVesting is Ownable {
   mapping (address => bool) public revoked;
 
 
-  /**
-   * @dev Creates a vesting contract that vests its balance of any ERC20 token to the
+  /** @dev Creates a vesting contract that vests its balance of any ERC20 token to the
    * _beneficiary, gradually in a linear fashion until _start + _duration. By then all
    * of the balance will have vested.
    * @param _beneficiary address of the beneficiary to whom vested tokens are transferred
@@ -53,56 +48,47 @@ contract StandardTokenVesting is Ownable {
     start = _start;
   }
 
-  /**
-   * @notice Transfers vested tokens to beneficiary.
-   * @param token ERC20 token which is being vested
-   */
+  /** @notice Transfers vested tokens to beneficiary.
+    * @param token ERC20 token which is being vested
+    */
   function release(EmalToken token) public returns (bool){
     uint256 unreleased = releasableAmount(token);
-
     require(unreleased > 0);
-
     released[token] = released[token].add(unreleased);
 
     token.transfer(beneficiary, unreleased);
-
     emit Released(unreleased);
     return true;
   }
 
-  /**
-   * @notice Allows the owner to revoke the vesting. Tokens already vested
-   * remain in the contract, the rest are returned to the owner.
-   * @param token ERC20 token which is being vested
-   */
+  /** @notice Allows the owner to revoke the vesting. Tokens already vested
+    * remain in the contract, the rest are returned to the owner.
+    * @param token ERC20 token which is being vested
+    */
   function revoke(EmalToken token) public onlyOwner returns(bool) {
     require(revocable);
     require(!revoked[token]);
-
     uint256 balance = token.balanceOf(this);
-
     uint256 unreleased = releasableAmount(token);
     uint256 refund = balance.sub(unreleased);
 
     revoked[token] = true;
-
     token.transfer(owner, refund);
-
     emit Revoked();
+
     return true;
   }
 
-  /**
-   * @dev Calculates the amount that has already vested but hasn't been released yet.
-   * @param token ERC20 token which is being vested
-   */
+  /** @dev Calculates the amount that has already vested but hasn't been released yet.
+    * @param token ERC20 token which is being vested
+    */
   function releasableAmount(EmalToken token) view public returns (uint256) {
     return vestedAmount(token).sub(released[token]);
   }
 
   /** @dev Calculates the amount that has already vested.
-   * @param token Emal token which is being vested
-   */
+    * @param token Emal token which is being vested
+    */
   function vestedAmount(EmalToken token) view public returns (uint256) {
     uint256 currentBalance = token.balanceOf(this);
     uint256 totalBalance = currentBalance.add(released[token]);

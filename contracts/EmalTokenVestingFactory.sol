@@ -1,5 +1,4 @@
-/* solium-disable security/no-block-members */
-pragma solidity ^ 0.4.24;
+pragma solidity ^0.4.24;
 
 import './StandardTokenVesting.sol';
 import './Ownable.sol';
@@ -53,7 +52,6 @@ contract EmalTokenVestingFactory is Ownable {
 
     function releasableAmount(address _beneficiary) view public returns(uint256) {
         require(getVestingContractAddress( _beneficiary) != address(0));
-        //StandardTokenVesting vesting = StandardTokenVesting(vestingContractAddresses[_beneficiary]);
         return vestingContractAddresses[_beneficiary].releasableAmount(token);
     }
 
@@ -63,15 +61,11 @@ contract EmalTokenVestingFactory is Ownable {
 
     function vestedAmount(address _beneficiary) view public returns(uint256) {
         require(getVestingContractAddress(_beneficiary) != address(0));
-        //StandardTokenVesting vesting = StandardTokenVesting(vestingContractAddresses[_beneficiary]);
-
         return vestingContractAddresses[_beneficiary].vestedAmount(token);
     }
 
     function release(address _beneficiary) public returns(bool) {
         require(getVestingContractAddress(_beneficiary) != address(0));
-        //StandardTokenVesting vesting = StandardTokenVesting(vestingContractAddresses[_beneficiary]);
-
         return vestingContractAddresses[_beneficiary].release(token);
     }
 
