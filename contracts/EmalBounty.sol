@@ -6,7 +6,7 @@ import "./Ownable.sol";
 contract EmalToken {
     // add function prototypes of only those used here
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
-    function getBountyAmount() public returns(uint256);
+    function getBountyAmount() public pure returns(uint256);
 }
 
 

@@ -106,16 +106,16 @@ contract EmalToken is StandardToken, Ownable {
         assert(approve(bountyAddress, bountyAmount));
     }
 
-    function getPresaleAmount() public returns(uint256) {
+    function getPresaleAmount() public pure returns(uint256) {
         return presaleAmount;
     }
-    function getCrowdsaleAmount() public returns(uint256) {
+    function getCrowdsaleAmount() public pure returns(uint256) {
         return crowdsaleAmount;
     }
-    function getVestingAmount() public returns(uint256) {
+    function getVestingAmount() public pure returns(uint256) {
         return vestingAmount;
     }
-    function getBountyAmount() public returns(uint256) {
+    function getBountyAmount() public pure returns(uint256) {
         return bountyAmount;
     }
 

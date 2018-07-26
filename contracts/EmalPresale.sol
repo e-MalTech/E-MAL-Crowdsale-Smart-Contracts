@@ -7,7 +7,7 @@ import "./Pausable.sol";
 contract EmalToken {
     // add function prototypes of only those used here
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
-    function getPresaleAmount() public returns(uint256);
+    function getPresaleAmount() public pure returns(uint256);
 }
 
 contract EmalWhitelist {

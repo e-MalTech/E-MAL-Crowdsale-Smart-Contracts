@@ -7,7 +7,7 @@ import "./Pausable.sol";
 contract EmalToken {
     // add function prototypes of only those used here
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
-    function getCrowdsaleAmount() public returns(uint256);
+    function getCrowdsaleAmount() public pure returns(uint256);
     function setStartTimeForTokenTransfers(uint _startTime) external;
 }
 
@@ -141,7 +141,6 @@ contract EmalCrowdsale is Ownable, Pausable {
                 rate = priceOfEthInUSD.mul(100).div(priceOfEMLTokenInUSDPenny).mul(bonusPercent3.add(100)).div(100);
             }
         }
-
         return rate;
     }
 
@@ -289,8 +288,8 @@ contract EmalCrowdsale is Ownable, Pausable {
 
     /** @dev Returns ether to token holders in case soft cap is not reached.
       */
-    function claimRefund() public onlyOwner {
-        require(!isCrowdsaleActive());
+    function claimRefund() whenNotPaused public onlyOwner {
+        require(now>endTime);
         require(totalTokensSoldandAllocated<softCap);
         uint256 amount = etherInvestments[msg.sender];
 
