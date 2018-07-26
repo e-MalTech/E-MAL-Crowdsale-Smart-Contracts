@@ -32,7 +32,7 @@ contract EmalBounty is Ownable {
     State public state;
 
     // Bounty limit in EMAL tokens
-    uint256 public bountyLimit = token.getBountyAmount();
+    uint256 public bountyLimit;
 
     // Count of total number of EML tokens that have been currently allocated to bounty users
     uint256 public totalTokensAllocated = 0;
@@ -68,6 +68,7 @@ contract EmalBounty is Ownable {
         state = State.Active;
         owner = msg.sender;
         token = EmalToken(_token);
+        bountyLimit = token.getBountyAmount();
     }
 
     /* Do not accept ETH */

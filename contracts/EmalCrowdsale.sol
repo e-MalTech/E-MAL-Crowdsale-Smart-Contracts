@@ -39,7 +39,7 @@ contract EmalCrowdsale is Ownable, Pausable {
     bool private isStartTimeSetForTokenTransfers = false;
 
     // Hard cap in EMAL tokens
-    uint256 public hardCap = token.getCrowdsaleAmount();
+    uint256 public hardCap;
 
     // Soft cap in EMAL tokens
     uint256 constant public softCap = 50000000 * (10 ** 18);
@@ -166,6 +166,7 @@ contract EmalCrowdsale is Ownable, Pausable {
         owner = msg.sender;
         token = EmalToken(_token);
         list = EmalWhitelist(_list);
+        hardCap = token.getCrowdsaleAmount();
     }
 
     /** @dev Fallback function that can be used to buy EML tokens. Or in

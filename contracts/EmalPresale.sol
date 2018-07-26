@@ -35,7 +35,7 @@ contract EmalPresale is Ownable, Pausable {
     address public multisigWallet;
 
     // Hard cap in EMAL tokens
-    uint256 public hardCap = token.getPresaleAmount();
+    uint256 public hardCap;
 
     // Amount of tokens that were sold to ether investors plus tokens allocated to investors for fiat and btc investments.
     uint256 public totalTokensSoldandAllocated = 0;
@@ -140,6 +140,7 @@ contract EmalPresale is Ownable, Pausable {
         owner = msg.sender;
         token = EmalToken(_token);
         list = EmalWhitelist(_list);
+        hardCap = token.getPresaleAmount();
     }
 
     /** @dev Fallback function that can be used to buy tokens.
