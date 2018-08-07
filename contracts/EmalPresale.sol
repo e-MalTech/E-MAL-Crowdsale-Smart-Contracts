@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity 0.4.24;
 
 import "./SafeMath.sol";
 import "./Ownable.sol";
@@ -7,7 +7,7 @@ import "./Pausable.sol";
 contract EmalToken {
     // add function prototypes of only those used here
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
-    function getPresaleAmount() public pure returns(uint256);
+    function getPresaleAmount() public view returns(uint256);
 }
 
 contract EmalWhitelist {
@@ -19,11 +19,10 @@ contract EmalWhitelist {
 contract EmalPresale is Ownable, Pausable {
 
     using SafeMath for uint256;
-    using SafeMath for uint;
 
     // Start and end timestamps
-    uint public startTime;
-    uint public endTime;
+    uint256 public startTime;
+    uint256 public endTime;
 
     // The token being sold
     EmalToken public token;
@@ -85,19 +84,20 @@ contract EmalPresale is Ownable, Pausable {
     uint256 priceOfEMLTokenInUSDPenny = 60;
     uint256 overridenBonusValue = 0;
 
-    function setExchangeRate(uint256 overridenValue) onlyOwner public returns(bool) {
+    function setExchangeRate(uint256 overridenValue) public onlyOwner returns(bool) {
         require( overridenValue > 0 );
+        require( overridenValue != priceOfEthInUSD);
         priceOfEthInUSD = overridenValue;
         return true;
     }
 
     function getExchangeRate() public view returns(uint256){
-        uint256 _priceOfEthInUSD = priceOfEthInUSD;
-        return _priceOfEthInUSD;
+        return priceOfEthInUSD;
     }
 
-    function setOverrideBonus(uint256 overridenValue) onlyOwner public returns(bool) {
+    function setOverrideBonus(uint256 overridenValue) public onlyOwner returns(bool) {
         require( overridenValue > 0 );
+        require( overridenValue != overridenBonusValue);
         overridenBonusValue = overridenValue;
         return true;
     }
@@ -157,7 +157,7 @@ contract EmalPresale is Ownable, Pausable {
     /** @dev Function for buying EML tokens using ether
       * @param _investorAddr The address that should receive bought tokens
       */
-    function buyTokensUsingEther(address _investorAddr) whenNotPaused internal {
+    function buyTokensUsingEther(address _investorAddr) internal whenNotPaused {
         require(_investorAddr != address(0));
         require(validPurchase());
 
@@ -192,28 +192,21 @@ contract EmalPresale is Ownable, Pausable {
         // Forward funds
         multisigWallet.transfer(weiAmount);
 
-        // Update token contract.
-        _postValidationUpdateTokenContract();
-
         // Return funds that are over hard cap
         if (returnToSender > 0) {
             msg.sender.transfer(returnToSender);
         }
     }
 
-    function _postValidationUpdateTokenContract() pure internal {
-    }
-
     /**
      * @dev Internal function that is used to check if the incoming purchase should be accepted.
      * @return True if the transaction can buy tokens
      */
-    function validPurchase() internal constant returns(bool) {
+    function validPurchase() internal view returns(bool) {
         bool withinPeriod = now >= startTime && now <= endTime;
-        bool nonZeroPurchase = msg.value != 0;
-        bool minimumPurchase = msg.value >= 12*(10**18);
+        bool minimumPurchase = msg.value >= 1*(10**18);
         bool hardCapNotReached = totalTokensSoldandAllocated < hardCap;
-        return withinPeriod && nonZeroPurchase && hardCapNotReached && minimumPurchase;
+        return withinPeriod && hardCapNotReached && minimumPurchase;
     }
 
     /** @dev Public function to check if Presale isActive or not
@@ -231,12 +224,12 @@ contract EmalPresale is Ownable, Pausable {
       * @param _owner The address to query the the balance of.
      * @return An uint256 representing the amount owned by the passed address.
      */
-    function balanceOfEtherInvestor(address _owner) external constant returns(uint256 balance) {
+    function balanceOfEtherInvestor(address _owner) external view returns(uint256 balance) {
         require(_owner != address(0));
         return etherInvestments[_owner];
     }
 
-    function getTokensSoldToEtherInvestor(address _owner) public constant returns(uint256 balance) {
+    function getTokensSoldToEtherInvestor(address _owner) public view returns(uint256 balance) {
         require(_owner != address(0));
         return tokensSoldForEther[_owner];
     }
@@ -254,7 +247,7 @@ contract EmalPresale is Ownable, Pausable {
       * @param beneficiary The address of the investor
       * @param tokenCount The number of tokens to be allocated to this address
       */
-    function allocateTokens(address beneficiary, uint256 tokenCount) onlyOwner public returns(bool success) {
+    function allocateTokens(address beneficiary, uint256 tokenCount) public onlyOwner returns(bool success) {
         require(beneficiary != address(0));
         require(validAllocation(tokenCount));
 
@@ -274,12 +267,10 @@ contract EmalPresale is Ownable, Pausable {
         assert(token.transferFrom(owner, beneficiary, tokens));
         emit TokensAllocated(beneficiary, tokens);
 
-        /* Update token contract. */
-        _postValidationUpdateTokenContract();
         return true;
     }
 
-    function validAllocation( uint256 tokenCount ) internal constant returns(bool) {
+    function validAllocation( uint256 tokenCount ) internal view returns(bool) {
         bool withinPeriod = now >= startTime && now <= endTime;
         bool positiveAllocation = tokenCount > 0;
         bool hardCapNotReached = totalTokensSoldandAllocated < hardCap;

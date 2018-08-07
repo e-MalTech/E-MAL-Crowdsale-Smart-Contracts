@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity 0.4.24;
 
 import './ERC20Token.sol';
 import './SafeMath.sol';
@@ -18,7 +18,7 @@ contract StandardToken is ERC20Token {
     return _totalSupply;
   }
 
-  function balanceOf(address tokenOwner) public constant returns (uint256){
+  function balanceOf(address tokenOwner) public view returns (uint256){
         return balances[tokenOwner];
   }
 
@@ -56,7 +56,7 @@ contract StandardToken is ERC20Token {
   }
 
   // Function to check the amount of tokens that an owner allowed to a spender.
-  function allowance(address tokenOwner, address spender) public constant returns (uint256 remaining){
+  function allowance(address tokenOwner, address spender) public view returns (uint256 remaining){
       return allowed[tokenOwner][spender];
   }
 
@@ -74,7 +74,7 @@ contract StandardToken is ERC20Token {
   // To decrement allowed value is better to use this function to avoid 2 calls (and wait until the first transaction is mined)
   function decreaseApproval(address spender, uint256 subtractedValue ) public returns (bool){
     uint256 oldValue = allowed[msg.sender][spender];
-    if (subtractedValue > oldValue) {
+    if (subtractedValue >= oldValue) {
       allowed[msg.sender][spender] = 0;
     } else {
       allowed[msg.sender][spender] = oldValue.sub(subtractedValue);

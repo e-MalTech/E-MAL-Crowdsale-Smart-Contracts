@@ -1,4 +1,4 @@
-pragma solidity ^ 0.4.24;
+pragma solidity 0.4.24;
 
 import "./SafeMath.sol";
 import "./Ownable.sol";
@@ -7,8 +7,8 @@ import "./Pausable.sol";
 contract EmalToken {
     // add function prototypes of only those used here
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
-    function getCrowdsaleAmount() public pure returns(uint256);
-    function setStartTimeForTokenTransfers(uint _startTime) external;
+    function getCrowdsaleAmount() public view returns(uint256);
+    function setStartTimeForTokenTransfers(uint256 _startTime) external;
 }
 
 contract EmalWhitelist {
@@ -20,11 +20,10 @@ contract EmalWhitelist {
 contract EmalCrowdsale is Ownable, Pausable {
 
     using SafeMath for uint256;
-    using SafeMath for uint;
 
     // Start and end timestamps
-    uint public startTime;
-    uint public endTime;
+    uint256 public startTime;
+    uint256 public endTime;
 
     // The token being sold
     EmalToken public token;
@@ -42,7 +41,7 @@ contract EmalCrowdsale is Ownable, Pausable {
     uint256 public hardCap;
 
     // Soft cap in EMAL tokens
-    uint256 constant public softCap = 50000000 * (10 ** 18);
+    uint256 constant public soft_cap = 50000000 * (10 ** 18);
 
     // Amount of tokens that were sold to ether investors plus tokens allocated to investors for fiat and btc investments.
     uint256 public totalTokensSoldandAllocated = 0;
@@ -101,19 +100,20 @@ contract EmalCrowdsale is Ownable, Pausable {
     uint256 priceOfEMLTokenInUSDPenny = 60;
     uint256 overridenBonusValue = 0;
 
-    function setExchangeRate(uint256 overridenValue) onlyOwner public returns(bool) {
+    function setExchangeRate(uint256 overridenValue) public onlyOwner returns(bool) {
         require( overridenValue > 0 );
+        require( overridenValue != priceOfEthInUSD);
         priceOfEthInUSD = overridenValue;
         return true;
     }
 
     function getExchangeRate() public view returns(uint256){
-        uint256 _priceOfEthInUSD = priceOfEthInUSD;
-        return _priceOfEthInUSD;
+        return priceOfEthInUSD;
     }
 
-    function setOverrideBonus(uint256 overridenValue) onlyOwner public returns(bool) {
+    function setOverrideBonus(uint256 overridenValue) public onlyOwner returns(bool) {
         require( overridenValue > 0 );
+        require( overridenValue != overridenBonusValue);
         overridenBonusValue = overridenValue;
         return true;
     }
@@ -131,13 +131,11 @@ contract EmalCrowdsale is Ownable, Pausable {
         if(overridenBonusValue > 0){
             rate = priceOfEthInUSD.mul(100).div(priceOfEMLTokenInUSDPenny).mul(overridenBonusValue.add(100)).div(100);
         } else {
-            if (now < (startTime + 2 weeks)) {
+            if (now <= (startTime + 2 weeks)) {
                 rate = priceOfEthInUSD.mul(100).div(priceOfEMLTokenInUSDPenny).mul(bonusPercent1.add(100)).div(100);
-            }
-            if (now > (startTime + 2 weeks) && now < (startTime + 4 weeks)) {
+            } if (now > (startTime + 2 weeks) && now <= (startTime + 4 weeks)) {
                 rate = priceOfEthInUSD.mul(100).div(priceOfEMLTokenInUSDPenny).mul(bonusPercent2.add(100)).div(100);
-            }
-            if (now > (startTime + 4 weeks)) {
+            } else {
                 rate = priceOfEthInUSD.mul(100).div(priceOfEMLTokenInUSDPenny).mul(bonusPercent3.add(100)).div(100);
             }
         }
@@ -171,11 +169,11 @@ contract EmalCrowdsale is Ownable, Pausable {
 
     /** @dev Fallback function that can be used to buy EML tokens. Or in
       * case of the owner, return ether to allow refunds in case crowdsale
-      * ended or paused and didnt reach softcap.
+      * ended or paused and didnt reach soft_cap.
       */
     function() external payable {
         if (msg.sender == multisigWallet) {
-            require( (!isCrowdsaleActive()) && totalTokensSoldandAllocated<softCap);
+            require( (!isCrowdsaleActive()) && totalTokensSoldandAllocated<soft_cap);
         } else {
             if (list.isWhitelisted(msg.sender)) {
                 buyTokensUsingEther(msg.sender);
@@ -188,7 +186,7 @@ contract EmalCrowdsale is Ownable, Pausable {
     /** @dev Function for buying EML tokens using ether
       * @param _investorAddr The address that should receive bought tokens
       */
-    function buyTokensUsingEther(address _investorAddr) whenNotPaused internal {
+    function buyTokensUsingEther(address _investorAddr) internal whenNotPaused {
         require(_investorAddr != address(0));
         require(validPurchase());
 
@@ -254,12 +252,11 @@ contract EmalCrowdsale is Ownable, Pausable {
     /** @dev Internal function that is used to check if the incoming purchase should be accepted.
       * @return True if the transaction can buy tokens
       */
-    function validPurchase() internal constant returns(bool) {
+    function validPurchase() internal view returns(bool) {
         bool withinPeriod = now >= startTime && now <= endTime;
-        bool nonZeroPurchase = msg.value != 0;
         bool minimumPurchase = msg.value >= 1*(10**18);
         bool hardCapNotReached = totalTokensSoldandAllocated < hardCap;
-        return withinPeriod && nonZeroPurchase && hardCapNotReached && minimumPurchase;
+        return withinPeriod && hardCapNotReached && minimumPurchase;
     }
 
     /** @dev Public function to check if Crowdsale isActive or not
@@ -277,21 +274,21 @@ contract EmalCrowdsale is Ownable, Pausable {
       * @param _owner The address to query the the balance of.
       * @return An uint256 representing the amount owned by the passed address.
       */
-    function balanceOfEtherInvestor(address _owner) external constant returns(uint256 balance) {
+    function balanceOfEtherInvestor(address _owner) external view returns(uint256 balance) {
         require(_owner != address(0));
         return etherInvestments[_owner];
     }
 
-    function getTokensSoldToEtherInvestor(address _owner) public constant returns(uint256 balance) {
+    function getTokensSoldToEtherInvestor(address _owner) public view returns(uint256 balance) {
         require(_owner != address(0));
         return tokensSoldForEther[_owner];
     }
 
     /** @dev Returns ether to token holders in case soft cap is not reached.
       */
-    function claimRefund() whenNotPaused public onlyOwner {
+    function claimRefund() public whenNotPaused onlyOwner {
         require(now>endTime);
-        require(totalTokensSoldandAllocated<softCap);
+        require(totalTokensSoldandAllocated<soft_cap);
         uint256 amount = etherInvestments[msg.sender];
 
         if (address(this).balance >= amount) {
@@ -316,7 +313,7 @@ contract EmalCrowdsale is Ownable, Pausable {
       * @param beneficiary The address of the investor
       * @param tokenCount The number of tokens to be allocated to this address
       */
-    function allocateTokens(address beneficiary, uint256 tokenCount) onlyOwner public returns(bool success) {
+    function allocateTokens(address beneficiary, uint256 tokenCount) public onlyOwner returns(bool success) {
         require(beneficiary != address(0));
         require(validAllocation(tokenCount));
 
@@ -341,7 +338,7 @@ contract EmalCrowdsale is Ownable, Pausable {
         return true;
     }
 
-    function validAllocation( uint256 tokenCount ) internal constant returns(bool) {
+    function validAllocation( uint256 tokenCount ) internal view returns(bool) {
         bool withinPeriod = now >= startTime && now <= endTime;
         bool positiveAllocation = tokenCount > 0;
         bool hardCapNotReached = totalTokensSoldandAllocated < hardCap;
