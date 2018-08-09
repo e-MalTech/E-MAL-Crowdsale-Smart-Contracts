@@ -1,8 +1,7 @@
-pragma solidity ^0.4.24;
+pragma solidity 0.4.24;
 
 import './StandardTokenVesting.sol';
 import './Ownable.sol';
-
 
 
 /** @notice Factory is a software design pattern for creating instances of a class.
@@ -50,16 +49,12 @@ contract EmalTokenVestingFactory is Ownable {
         return vestingContractAddresses[_beneficiary];
     }
 
-    function releasableAmount(address _beneficiary) view public returns(uint256) {
+    function releasableAmount(address _beneficiary) public view returns(uint256) {
         require(getVestingContractAddress( _beneficiary) != address(0));
         return vestingContractAddresses[_beneficiary].releasableAmount(token);
     }
 
-    function returnUnixTimeStamp() public view returns(uint256) {
-        return now;
-    }
-
-    function vestedAmount(address _beneficiary) view public returns(uint256) {
+    function vestedAmount(address _beneficiary) public view returns(uint256) {
         require(getVestingContractAddress(_beneficiary) != address(0));
         return vestingContractAddresses[_beneficiary].vestedAmount(token);
     }

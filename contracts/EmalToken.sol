@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity 0.4.24;
 
 import "./SafeMath.sol";
 import './StandardToken.sol';
@@ -6,26 +6,25 @@ import './Ownable.sol';
 
 contract EmalToken is StandardToken, Ownable {
 
-    using SafeMath for uint;
     using SafeMath for uint256;
 
-    string public constant symbol = "EMAL";
+    string public constant symbol = "EML";
     string public constant name = "E-Mal Token";
     uint8 public constant decimals = 18;
 
     // Total Number of tokens ever goint to be minted. 1 BILLION EML tokens.
-    //uint256 private constant mintingCappedAmount = 1000000000 * 10 ** uint256(decimals);
+    uint256 private constant minting_capped_amount = 1000000000 * 10 ** uint256(decimals);
 
     // 24% of initial supply
-    uint256 constant presaleAmount = 120000000 * 10 ** uint256(decimals);
+    uint256 constant presale_amount = 120000000 * 10 ** uint256(decimals);
     // 60% of inital supply
-    uint256 constant crowdsaleAmount = 300000000 * 10 ** uint256(decimals);
+    uint256 constant crowdsale_amount = 300000000 * 10 ** uint256(decimals);
     // 8% of inital supply.
-    uint256  constant vestingAmount = 40000000 * 10 ** uint256(decimals);
+    uint256  constant vesting_amount = 40000000 * 10 ** uint256(decimals);
     // 8% of inital supply.
-    uint256 constant bountyAmount = 40000000 * 10 ** uint256(decimals);
+    uint256 constant bounty_amount = 40000000 * 10 ** uint256(decimals);
     // Total initial supply of tokens to be given away initially. Rested is minted. Should be 500M tokens.
-    uint256 private initialSupply = presaleAmount.add(crowdsaleAmount.add(vestingAmount.add(bountyAmount)));
+    uint256 private initialSupply = presale_amount.add(crowdsale_amount.add(vesting_amount.add(bounty_amount)));
 
     address public presaleAddress;
     address public crowdsaleAddress;
@@ -38,7 +37,7 @@ contract EmalToken is StandardToken, Ownable {
       * will be allowed done so as to prevent early buyers from clearing out
       * of their EML balance during the presale and publicsale.
       */
-    uint public startTimeForTransfers;
+    uint256 public startTimeForTransfers;
 
     /** @dev to cap the total number of tokens that will ever be newly minted
       * owner has to stop the minting by setting this variable to true.
@@ -70,7 +69,7 @@ contract EmalToken is StandardToken, Ownable {
 
 
     constructor() public {
-        startTimeForTransfers = now + 5 minutes;
+        startTimeForTransfers = now + 365 days;
 
         _totalSupply = initialSupply;
         owner = msg.sender;
@@ -91,39 +90,39 @@ contract EmalToken is StandardToken, Ownable {
       */
     function setPresaleAddress(address _presaleAddress) external onlyOwner {
         presaleAddress = _presaleAddress;
-        assert(approve(presaleAddress, presaleAmount));
+        assert(approve(presaleAddress, presale_amount));
     }
     function setCrowdsaleAddress(address _crowdsaleAddress) external onlyOwner {
         crowdsaleAddress = _crowdsaleAddress;
-        assert(approve(crowdsaleAddress, crowdsaleAmount));
+        assert(approve(crowdsaleAddress, crowdsale_amount));
     }
     function setVestingAddress(address _vestingAddress) external onlyOwner {
         vestingAddress = _vestingAddress;
-        assert(approve(vestingAddress, vestingAmount));
+        assert(approve(vestingAddress, vesting_amount));
     }
     function setBountyAddress(address _bountyAddress) external onlyOwner {
         bountyAddress = _bountyAddress;
-        assert(approve(bountyAddress, bountyAmount));
+        assert(approve(bountyAddress, bounty_amount));
     }
 
-    function getPresaleAmount() public pure returns(uint256) {
-        return presaleAmount;
+    function getPresaleAmount() public view returns(uint256) {
+        return presale_amount;
     }
-    function getCrowdsaleAmount() public pure returns(uint256) {
-        return crowdsaleAmount;
+    function getCrowdsaleAmount() public view returns(uint256) {
+        return crowdsale_amount;
     }
-    function getVestingAmount() public pure returns(uint256) {
-        return vestingAmount;
+    function getVestingAmount() public view returns(uint256) {
+        return vesting_amount;
     }
-    function getBountyAmount() public pure returns(uint256) {
-        return bountyAmount;
+    function getBountyAmount() public view returns(uint256) {
+        return bounty_amount;
     }
 
     /** @dev Sets the start time after which transferring of EML tokens
       * will be allowed done so as to prevent early buyers from clearing out
       * of their EML balance during the presale and publicsale.
       */
-    function setStartTimeForTokenTransfers(uint _startTimeForTransfers) external {
+    function setStartTimeForTokenTransfers(uint256 _startTimeForTransfers) external {
         require(msg.sender == crowdsaleAddress);
         if (_startTimeForTransfers < startTimeForTransfers) {
             startTimeForTransfers = _startTimeForTransfers;
@@ -133,33 +132,49 @@ contract EmalToken is StandardToken, Ownable {
 
     /** @dev Transfer possible only after ICO ends and Frozen accounts
       * wont be able to transfer funds to other any other account and viz.
+      * @notice added safeTransfer functionality
       */
-    function transfer(address _to, uint _value) public returns(bool) {
+    function transfer(address _to, uint256 _value) public returns(bool) {
         require(now >= startTimeForTransfers);
         require(!frozenAccount[msg.sender]);
         require(!frozenAccount[_to]);
 
-        return super.transfer(_to, _value);
+        require(super.transfer(_to, _value));
+        return true;
     }
 
     /** @dev Only owner's tokens can be transferred before Crowdsale ends.
       * beacuse the inital supply of EML is allocated to owners acc and later
       * distributed to various subcontracts.
+      * @notice added safeTransferFrom functionality
       */
-    function transferFrom(address _from, address _to, uint _value) public returns(bool) {
+    function transferFrom(address _from, address _to, uint256 _value) public returns(bool) {
         require(!frozenAccount[_from]);
         require(!frozenAccount[_to]);
+        require(!frozenAccount[msg.sender]);
+
         if (now < startTimeForTransfers) {
             require(_from == owner);
         }
-        return super.transferFrom(_from, _to, _value);
+
+        require(super.transferFrom(_from, _to, _value));
+        return true;
+    }
+
+    /** @notice added safeApprove functionality
+      */
+    function approve(address spender, uint256 tokens) public returns (bool){
+        require(super.approve(spender, tokens));
+        return true;
     }
 
    /** @notice `freeze? Prevent | Allow` `target` from sending & receiving tokens
      * @param target Address to be frozen
      * @param freeze either to freeze it or not
      */
-    function freezeAccount(address target, bool freeze) onlyOwner public {
+    function freezeAccount(address target, bool freeze) public onlyOwner {
+        require(frozenAccount[target] != freeze);
+
         frozenAccount[target] = freeze;
         emit FrozenFunds(target, freeze);
     }
@@ -170,7 +185,9 @@ contract EmalToken is StandardToken, Ownable {
       * @param _amount The amount of tokens to mint.
       * @return A boolean that indicates if the operation was successful.
       */
-    function mint(address _to, uint256 _amount) hasMintPermission canMint public returns (bool) {
+    function mint(address _to, uint256 _amount) public hasMintPermission canMint returns (bool) {
+      require(_totalSupply.add(_amount) <= minting_capped_amount);
+
       _totalSupply = _totalSupply.add(_amount);
       balances[_to] = balances[_to].add(_amount);
       emit Mint(_to, _amount);
@@ -181,7 +198,7 @@ contract EmalToken is StandardToken, Ownable {
    /** @dev Function to stop minting new tokens.
      * @return True if the operation was successful.
      */
-    function finishMinting() onlyOwner canMint public returns (bool) {
+    function finishMinting() public onlyOwner canMint returns (bool) {
       mintingFinished = true;
       emit MintFinished();
       return true;

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity 0.4.24;
 
 import "./SafeMath.sol";
 import "./Ownable.sol";
@@ -6,18 +6,13 @@ import "./Ownable.sol";
 contract EmalToken {
     // add function prototypes of only those used here
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool);
-    function getBountyAmount() public pure returns(uint256);
+    function getBountyAmount() public view returns(uint256);
 }
 
 
 contract EmalBounty is Ownable {
 
     using SafeMath for uint256;
-    using SafeMath for uint;
-
-    // Start and end timestamps
-    uint public startTime;
-    uint public endTime;
 
     // The token being sold
     EmalToken public token;
@@ -29,10 +24,10 @@ contract EmalBounty is Ownable {
     }
 
     // contains current state of bounty contract
-    State public state;
+    State public state ;
 
     // Bounty limit in EMAL tokens
-    uint256 public bountyLimit;
+    uint256 public bountyLimit ;
 
     // Count of total number of EML tokens that have been currently allocated to bounty users
     uint256 public totalTokensAllocated = 0;
@@ -64,10 +59,9 @@ contract EmalBounty is Ownable {
       */
     constructor(address _token) public {
         require(_token != address(0));
-
-        state = State.Active;
         owner = msg.sender;
         token = EmalToken(_token);
+        state = State.Active;
         bountyLimit = token.getBountyAmount();
     }
 
@@ -76,7 +70,7 @@ contract EmalBounty is Ownable {
         revert();
     }
 
-    function closeBounty() onlyOwner public returns(bool){
+    function closeBounty() public onlyOwner returns(bool){
         require( state!=State.Closed );
         state = State.Closed;
         return true;
@@ -86,7 +80,7 @@ contract EmalBounty is Ownable {
       * @return True if Bounty event has ended
       */
     function isBountyActive() public view returns(bool) {
-        if (state==State.Active && totalTokensAllocated<=bountyLimit){
+        if (state==State.Active && totalTokensAllocated<bountyLimit){
             return true;
         } else {
             return false;
@@ -97,7 +91,7 @@ contract EmalBounty is Ownable {
       * @param beneficiary The address of the bounty user
       * @param tokenCount The number of tokens to be allocated to this address
       */
-    function allocateTokens(address beneficiary, uint256 tokenCount) onlyOwner public returns(bool success) {
+    function allocateTokens(address beneficiary, uint256 tokenCount) public onlyOwner returns(bool success) {
         require(beneficiary != address(0));
         require(validAllocation(tokenCount));
 
@@ -113,19 +107,14 @@ contract EmalBounty is Ownable {
         totalTokensAllocated = totalTokensAllocated.add(tokens);
         emit TokensAllocated(beneficiary, tokens);
 
-        /* Update token contract. */
-        _postValidationUpdateTokenContract();
         return true;
     }
 
-    function validAllocation( uint256 tokenCount ) internal constant returns(bool) {
+    function validAllocation( uint256 tokenCount ) internal view returns(bool) {
         bool isActive = state==State.Active;
         bool positiveAllocation = tokenCount>0;
         bool bountyLimitNotReached = totalTokensAllocated<bountyLimit;
         return isActive && positiveAllocation && bountyLimitNotReached;
-    }
-
-    function _postValidationUpdateTokenContract() pure internal {
     }
 
     /** @dev Remove tokens from a bounty user's allocation.
@@ -133,9 +122,9 @@ contract EmalBounty is Ownable {
       * @param beneficiary The address of the bounty user
       * @param tokenCount The number of tokens to be deallocated to this address
       */
-    function deductAllocatedTokens(address beneficiary, uint256 tokenCount) onlyOwner public returns(bool success) {
+    function deductAllocatedTokens(address beneficiary, uint256 tokenCount) public onlyOwner returns(bool success) {
         require(beneficiary != address(0));
-        require(tokenCount>0 && allocatedTokens[beneficiary]>tokenCount);
+        require(tokenCount>0 && tokenCount<=allocatedTokens[beneficiary]);
 
         allocatedTokens[beneficiary] = allocatedTokens[beneficiary].sub(tokenCount);
         totalTokensAllocated = totalTokensAllocated.sub(tokenCount);
